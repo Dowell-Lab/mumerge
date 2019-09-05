@@ -117,14 +117,15 @@ def inputs_processor():
         "used.\n")
 
     # This dictionary stories all the parsed and processed args
-    outdict = {'bedfiles': [],
-                'sampids': [],
-                'groupings': [],
-                'merged': None,
-                'output': None,
-                'weights': None,
-                'verbose': False,
-                'TEST': None}
+    outdict = {
+        'bedfiles': [],
+        'sampids': [],
+        'groupings': [],
+        'merged': None,
+        'output': None,
+        'weights': None,
+        'verbose': False
+        }
 
     parser = argparse.ArgumentParser(description=description_text)
     # ADDITIONAL HELP TEXT FLAG
@@ -154,10 +155,6 @@ def inputs_processor():
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         help="Verbose printing during processing.")
-    # TESTING UNIT (OPTIONAL)
-    parser.add_argument('-T', '--TEST',
-                        action='store_true',
-                        help="Testing mode for benchmarking performance")
 
     args = parser.parse_args()
 
@@ -173,12 +170,6 @@ def inputs_processor():
         raise TypeError("Please specify output filename with '-o' flag. "
                         "Shound include fullpath + basename for outputs. "
                         "Check help menu for further information.")
-
-    # If -T is specified, skip all the bedfile reading and bedtools parsing
-    if args.TEST:
-        outdict['TEST'] = True
-        outdict['output'] = args.output
-        return outdict
 
     if args.input:
         with open(args.input, "r") as f:
@@ -285,8 +276,6 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
     interpreted as coverage.
 
     TODO: Incorporate the bedGraph functionality, write docstring
-
-    NOTE: POSSIBLY DELETE THIS, SINCE IT'S NOT UTILIZED
     '''
     with open(file) as f:
             # Initialize output list and counter
@@ -753,9 +742,9 @@ def bed_line_formatter(chromosome, mu_sig_list):
     for mu in mu_sig_list:
         start = str(round(mu[0] - mu[1]))
         stop = str(round(mu[0] + mu[1]))
-#        bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
-        avg = str(round((int(start) + int(stop)) / 2))
-        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
+        bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
+#        avg = str(round((int(start) + int(stop)) / 2))
+#        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
 
     return bed_lines
 
@@ -785,7 +774,6 @@ union_bedfile = inputs['merged']
 outfilename = inputs['output']
 verbose = inputs['verbose']
 weights = inputs['weights']
-test = inputs['TEST']
 
 num_samps = len(tfit_filenames)
 
@@ -796,40 +784,23 @@ miscallfilename = outfilename + '_MISCALLS.bed'
 miscallfile = open(miscallfilename, 'w')
 
 ## Writes the initial, summary data in the miscalls and log files
-#log_initializer(tfit_filenames, groupings, miscallfile, logfile)
+log_initializer(tfit_filenames, groupings, miscallfile, logfile)
 
-## TEST/BENCHMARK OPERATION
-if test:
-    rep = 10
-    cond = 1
-    tfit_dict = mt.mu_generator(npl = (10000, 0.5, 10), 
-                                rep=rep,
-                                cond=cond,
-                                N=30)
-    groupings = mt.test_groupings(tfit_dict)
-    num_samps = int(rep * cond)
-    logfile.write("### TEST RUN ###\n")
-    log_initializer(tfit_filenames, groupings, miscallfile, logfile)
-    print("GROUPINGS", groupings)
-
-## STANDARD OPERATION
-else:
-    log_initializer(tfit_filenames, groupings, miscallfile, logfile)
-    if verbose:
-        sys.stdout.write("\nGenerating 'bedtools merge' bedfile...\n")
-    ## Load merged bedfile
-    merge_regions = bedfile_reader(union_bedfile,
-                                bedGraph=False,
-                                print_header=False,
-                                count=False)
-    if verbose:
-        sys.stdout.write("Building Tfit-regions dictionary...\n")
-    ## Generate tfit dictionary, of form 
-    # {'chr#': {(reg_start,reg_stop): [(mu_start,mu_stop,cov,'sampID'), ...]}}
-    tfit_dict = mu_dict_generator(list(tfit_filenames),
-                                merge_regions,
-                                sampids = list(sampids),
-                                verbose = verbose)
+if verbose:
+    sys.stdout.write("\nGenerating 'bedtools merge' bedfile...\n")
+## Load merged bedfile
+merge_regions = bedfile_reader(union_bedfile,
+                            bedGraph=False,
+                            print_header=False,
+                            count=False)
+if verbose:
+    sys.stdout.write("Building Tfit-regions dictionary...\n")
+## Generate tfit dictionary, of form 
+# {'chr#': {(reg_start,reg_stop): [(mu_start,mu_stop,cov,'sampID'), ...]}}
+tfit_dict = mu_dict_generator(list(tfit_filenames),
+                            merge_regions,
+                            sampids = list(sampids),
+                            verbose = verbose)
 
 # Count up the total number of regions (to be logged and printed out)
 total = 0
@@ -862,9 +833,9 @@ with open(outbedfile, 'w') as output:
                                    .format(count, total))
                 count += 1
 
-            # Extract Tfit calls from region
+            # Select Tfit calls for one region
             mu_list = tfit_dict[chromosome][region]
-            print(chromosome, region, (region[0]+region[1])/2, mu_list)
+#            print(chromosome, region, (region[0]+region[1])/2, mu_list)
 
             # Calculate average number of tfit calls per sample (rounds up)
             avg_num_mu = math.ceil(len(mu_list) / num_samps)
@@ -897,7 +868,7 @@ with open(outbedfile, 'w') as output:
 
             # Extract (mu, sig) tuples for region from compiled tfit_dict
             old_mu_sig = mu_sig_extract(mu_list) #DONE!!!
-            #print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
+#            print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
 
             # Calculate updated sigma values for each updated mu location
             new_mu_sig = sigma_assigner(new_mu, old_mu_sig) #DONE!!!
@@ -907,7 +878,7 @@ with open(outbedfile, 'w') as output:
 
             # Convert final (mu, sig) to bed line format and write to output
             bedlines = bed_line_formatter(chromosome, final_mu_sig) #DONE!!!
-
+            
             # Write updated bedlines to output file
             for line in bedlines:
                 output.write(line)
