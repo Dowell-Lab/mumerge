@@ -124,37 +124,56 @@ def inputs_processor():
         'merged': None,
         'output': None,
         'weights': None,
-        'verbose': False
-        }
+        'verbose': False,
+        'width_ratio': None
+    }
 
     parser = argparse.ArgumentParser(description=description_text)
-    # ADDITIONAL HELP TEXT FLAG
-    parser.add_argument('-H', '--HELP', 
-                        action='store_true', 
-                        help="Verbose help info about the input format.")
 
+    # ADDITIONAL HELP TEXT FLAG
+    parser.add_argument(
+        '-H', '--HELP', 
+        action='store_true', 
+        help="Verbose help info about the input format."
+    )
     # INPUT FILE ARG (contains bedfiles, sampids, and groupings)
-    parser.add_argument('-i', '--input', 
-                        type=str, 
-                        help=input_help)
+    parser.add_argument(
+        '-i', '--input', 
+        type=str, 
+        help=input_help
+    )
     # OUTPUT PATH/FILENAME
-    parser.add_argument('-o', '--output', 
-                        type=str, 
-                        help=("Output file basename (full path, sans "
-                              "extension). WARNING: will overwrite any "
-                              "existing file)"))
+    parser.add_argument(
+        '-o', '--output', 
+        type=str, 
+        help=("Output file basename (full path, sans extension). WARNING: "
+            "will overwrite any existing file)")
+    )
+    # WIDTH RATIO (1/2-WIDTH-BED / PROB SIG)
+    parser.add_argument(
+        '-w', '--width',
+        type=float,
+        help=("The ratio of a the sigma for the corresponding probabilty "
+            "distribution to the bed region (half-width) --- sigma:half-bed "
+            "(default: 1???). The choice for this parameter will depend on "
+            "the data type as well as how bed regions were inferred from the "
+            "expression data."),
+        default=1.0
+    )
     # PRECOMPILED MERGE BEDFILE (OPTIONAL)
-    parser.add_argument('-m', '--merged',
-                        type=str,
-                        help=("Sorted bedfile (full path) containing the "
-                              "regions over which to combine the sample "
-                              "bedfiles. If not specified, mumerge will "
-                              "generate one directly from the sample "
-                              "bedfiles."))
+    parser.add_argument(
+        '-m', '--merged',
+        type=str,
+        help=("Sorted bedfile (full path) containing the regions over which "
+            "to combine the sample bedfiles. If not specified, mumerge will "
+            "generate one directly from the sample bedfiles.")
+    )
     # VERBOSE TOGGLE (OPTIONAL)
-    parser.add_argument('-v', '--verbose',
-                        action='store_true',
-                        help="Verbose printing during processing.")
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help="Verbose printing during processing."
+    )
 
     args = parser.parse_args()
 
@@ -232,6 +251,7 @@ def inputs_processor():
     outdict['merged'] = union_bedfile
     outdict['output'] = args.output
     outdict['weights'] = None
+    outdict['width_ratio'] = args.width
 
     return outdict
 
@@ -472,7 +492,7 @@ def mu_dict_generator(tfit_filenames,
 
 # This function generates the list of y-values at the corresponding x-values 
 # for a given distribution
-def prob_list_generator(xvals, params=None, dist="normal"):
+def prob_list_generator(xvals, params=None, dist="normal", width=1.0):
     '''
     This generates the y-values for the distribution of a mu tfit call. This 
     list should be the same length and order as the xvals list. The values
@@ -482,8 +502,10 @@ def prob_list_generator(xvals, params=None, dist="normal"):
     '''
     if dist == "normal":
         mu_pos = round((params[1] + params[0]) / 2)
-        mu_sig = (params[1] - params[0]) / 4      ## THIS 4 IS A KEY FACTOR IN INTERPRETTING TFIT INTERVALS!!
-        #mu_sig = (params[1] - params[0]) * 2
+
+        # sigma = (1/2-bed region) * width_ratio
+        mu_sig = ((params[1] - params[0]) / 2 ) * width    ## THIS IS A KEY FACTOR IN INTERPRETTING TFIT INTERVALS!!
+
         # evaluate the normal dist at all points in xvals
         y_i = [normal(x, mu_pos, mu_sig, 1) for x in xvals]
     elif dist == "uni":
@@ -517,7 +539,7 @@ def prob_sum(sample_prob_list):
 ###############################################################################
 # This function generates lists of probabilities values from the tfit_dict 
 # (mu, sig)
-def prob_list_formatter(region, mu_list, dist="normal"):
+def prob_list_formatter(region, mu_list, dist="normal", width=1.0):
     '''
     DOCSTRING
     This function sort of supplants the mu_viz_prep() function I wrote in the
@@ -544,7 +566,7 @@ def prob_list_formatter(region, mu_list, dist="normal"):
     # Loop over all the mu in the initial mu_list input and generate a y_i 
     # array for either normal or uni distributions
     for mu in mu_list:
-        values = prob_list_generator(xvals, mu, dist=dist)
+        values = prob_list_generator(xvals, mu, dist=dist, width=width)
         id = mu[3]
         region_dict[id].append(values)
 
@@ -630,14 +652,14 @@ def maxima_loc(samp_list, shift=0):
 ###############################################################################
 ## This function extracts the (mu, sig) values from the tfit_dict for a given
 # chr and region and outputs the list of tuples.
-def mu_sig_extract(mu_list):
+def mu_sig_extract(mu_list, width=1.0):
     '''
     This funciton just pulls the mu and sigma values out of the tfit_dict for
     a given chromesome and bed region. Returns tuples in list of form
     [(mu_1, sig_1), (mu_2, sig_2), ...].
     '''
     starts, stops, cov, samples = zip(*mu_list)
-    mu_sig_list = [(round((i[1] + i[0]) / 2), round((i[1] - i[0]) / 4)) # THIS FACTOR SAME AS ONE IN prob_list_generator()!!!
+    mu_sig_list = [(round((i[1] + i[0]) / 2), ((i[1] - i[0]) / 2) * width) # THIS FACTOR SAME AS ONE IN prob_list_generator()!!!
                    for i in zip(starts, stops)]
 
     return mu_sig_list
@@ -678,11 +700,11 @@ def sigma_assigner(new_mu, old_mu_sig):
     # calculate the sigma value for the new mu
     # NOTE!!! The 1 in (e[0] + 1) is to avoid dividing by zero. This might be
     # a problematic bias though.
-    for new_mu in new_pos:
-        dists = [abs(new_mu - old_mu) for old_mu in old_pos]
+    for mu in new_pos:
+        dists = [abs(mu - old_mu) for old_mu in old_pos]
         new_sig = sum([e[1] / (e[0] + 1) for e in zip(dists, old_sigs)])
         total_weight = sum([1 / (e + 1) for e in dists])
-        new_sig = round(new_sig / total_weight)
+        new_sig = new_sig / total_weight
         new_sigs.append(new_sig)
     
     new_mu_updated = [e for e in zip(new_pos, new_sigs, new_prob)]
@@ -733,15 +755,15 @@ def collision_resolver(mu_sig_list):
 ## This function defines the boundaries of the bed region, using the updated
 # sigmas (from sigma_assigner()) and outputs a list of strings formatted as 
 # bedfile regions.
-def bed_line_formatter(chromosome, mu_sig_list):
+def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
     '''
     Takes input list of new (mu, sigma) tuples and outputs list of strings 
     formatted as bedfile lines.
     '''
     bed_lines = []
     for mu in mu_sig_list:
-        start = str(round(mu[0] - mu[1]))
-        stop = str(round(mu[0] + mu[1]))
+        start = str(round(mu[0] - mu[1] / width))
+        stop = str(round(mu[0] + mu[1] / width))
         bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
 #        avg = str(round((int(start) + int(stop)) / 2))
 #        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
@@ -774,6 +796,7 @@ union_bedfile = inputs['merged']
 outfilename = inputs['output']
 verbose = inputs['verbose']
 weights = inputs['weights']
+width_ratio = inputs['width_ratio']
 
 num_samps = len(tfit_filenames)
 
@@ -824,8 +847,8 @@ count = 1
 with open(outbedfile, 'w') as output:
         
     ## Loop over every region in the tfit_dict (key1 = 'chr#', key2 = region)
-    for chromosome in tfit_dict.keys():
-        for region in tfit_dict[chromosome].keys():
+    for chromosome in sorted(tfit_dict.keys()):
+        for region in sorted(tfit_dict[chromosome].keys()):
             
             # Status counter and update at stdout
             if verbose:
@@ -838,12 +861,13 @@ with open(outbedfile, 'w') as output:
 #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
 
             # Calculate average number of tfit calls per sample (rounds up)
-            avg_num_mu = math.ceil(len(mu_list) / num_samps)
+            avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1    ## I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
 
             # Generate prob dict (func of base pos) for region of tfit calls
             sample_prob_dict = prob_list_formatter(region, 
                                                     mu_list, 
-                                                    dist="normal") #CHECK!!!
+                                                    dist="normal",
+                                                    width=width_ratio) #CHECK!!!
 
             # Calculate combined probability array (function of base position),
             # from 'groups' and the probability lists in sample_prob_dict() 
@@ -867,7 +891,7 @@ with open(outbedfile, 'w') as output:
                 continue
 
             # Extract (mu, sig) tuples for region from compiled tfit_dict
-            old_mu_sig = mu_sig_extract(mu_list) #DONE!!!
+            old_mu_sig = mu_sig_extract(mu_list, width=width_ratio) #DONE!!!
 #            print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
 
             # Calculate updated sigma values for each updated mu location
@@ -877,7 +901,11 @@ with open(outbedfile, 'w') as output:
             final_mu_sig = collision_resolver(new_mu_sig) #CHECK!!!
 
             # Convert final (mu, sig) to bed line format and write to output
-            bedlines = bed_line_formatter(chromosome, final_mu_sig) #DONE!!!
+            bedlines = bed_line_formatter(
+                chromosome, 
+                final_mu_sig, 
+                width=width_ratio
+            ) #DONE!!!
             
             # Write updated bedlines to output file
             for line in bedlines:
@@ -889,3 +917,4 @@ end = time.time()
 logfile.write("\nRun time: {} sec\n".format(end - start))
 logfile.close()
 miscallfile.close()
+sys.exit(0)

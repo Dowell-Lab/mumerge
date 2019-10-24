@@ -19,7 +19,7 @@ def input_parser():
     parser.add_argument(
         '-f',
         type=str,
-        help=("Input file basename (full path, sans extension). WARNING: will "
+        help=("Output file basename (full path, sans extension). WARNING: will "
             "overwrite any existing file)"),
         required=True
     )
@@ -45,6 +45,15 @@ def input_parser():
         help=("The number of iid simulations for the specified set of mu, "
         "replicates, and conditions."),
         default=10
+    )
+    parser.add_argument(
+        '-w',
+        type=float,
+        metavar='float',
+        help=("width ratio (sigma:1/2-width bed region) for converting "
+        "between bed region widths and probability distribution sigma. Input "
+        "flag for muMerge ('-w')."),
+        default=1.0
     )
     parser.add_argument(
         '-a',
@@ -100,6 +109,7 @@ def input_parser():
         'offset': args.o,
         'reps': args.r,
         'N': args.N,
+        'width': args.w,
         'A': a,
         'B': b,
         'C': c
@@ -455,11 +465,12 @@ if __name__ == '__main__':
     rep = params['reps']
     N = params['N']
     offset = params['offset']
+    width = params['width']
 
     mu_npl = [c for c in conditions if c != None]
     print(mu_npl)
 
-    # Generate the simulated bedfiles
+    ## Generate the simulated bedfiles
     exp_simulator(
         basename, 
         mu_npl=mu_npl,
@@ -472,7 +483,7 @@ if __name__ == '__main__':
     mumerge = '/mnt/c/Users/Jacob/Dropbox/0DOWELL/muMerge/mumerge/mumerge.py'
     input = basename + '.input'
     output = basename
-    cmd = ['python3', mumerge, '-i', input, '-o', output]
+    cmd = ['python3', mumerge, '-i', input, '-o', output, '-w', str(width)]
     print("cmd: ", ' '.join(cmd), '\n')
 
     subprocess.run(
@@ -480,7 +491,7 @@ if __name__ == '__main__':
         check=True, 
         stdout=subprocess.PIPE, 
         universal_newlines=True
-        )
+    )
 
     ## Generate list of input bedfiles
     with open(input, 'r') as f:
@@ -497,7 +508,7 @@ if __name__ == '__main__':
     si = '-a stdin'
     cmd = (
         bi, '-a', bedfiles[0], '-b', bedfiles[1], 
-        *(' '.join(['|', bi, si, '-b', f]) for f in bedfiles[2:]),
+        *(' '.join(['|', bi, si, '-b', f]) for f in bedfiles[2:]), 
         '>', intersectfile
     )
 
@@ -509,4 +520,10 @@ if __name__ == '__main__':
         shell=True
     )
 
+    stats_computer(
+        basename + '_MUMERGE.bed', 
+        basename + '_BEDTOOLS_MERGE.bed',
+        basename + '_BEDTOOLS_INTERSECT.bed'    
+    )
+    
     sys.exit(0)
