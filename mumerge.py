@@ -125,8 +125,8 @@ def inputs_processor():
         'output': None,
         'weights': None,
         'verbose': False,
-	'remove_singletons': False,
-        'width_ratio': None,
+        'remove_singletons': False,
+        'width_ratio': None
     }
 
     parser = argparse.ArgumentParser(description=description_text)
@@ -500,7 +500,7 @@ def mu_dict_generator(tfit_filenames,
 ################################################################################################
 # This function will be used to filter out singletons and low coverage calls to increase overall
 # call quality. 
-def call_remover(mu_list):
+def call_remover(mu_list,remove_singletons):
     '''
     This function removes calls that only appear in one sample
     (Later this will be the function that removes low quality/low
@@ -508,13 +508,10 @@ def call_remover(mu_list):
     '''
     # Check whether there is more than 1 entry at that region (should we do this as >=1 region/replicate instead?)
     if remove_singletons:
-        if len(mu_list) == 1: 
-            singletonfile.write("\n") # Write the singletons to a new output file (bad form not to define file until later...?)
-            singletonfile.write("\t".join([str(chromosome), 
-                                            str(region[0]), 
-                                            str(region[1]), 
-                                            str(mu_list[0][3])]))
+        if len(mu_list) == 1:
             return True
+        else:
+            return False
 
 # This function generates the list of y-values at the corresponding x-values 
 # for a given distribution
@@ -832,7 +829,6 @@ outbedfile = outfilename + "_MUMERGE.bed"
 logfile = open(outfilename + '.log', 'w')
 miscallfilename = outfilename + '_MISCALLS.bed'
 miscallfile = open(miscallfilename, 'w')
-
 if remove_singletons:
     singletonfilename = outfilename + '_SINGLETONS.bed'
     singletonfile = open(singletonfilename, 'w')
@@ -882,16 +878,21 @@ with open(outbedfile, 'w') as output:
             
             # Status counter and update at stdout
             if verbose:
-                sys.stdout.write("\nProcessed {} of {} regions"
+                sys.stdout.write("\rProcessed {} of {} regions"
                                    .format(count, total))
                 count += 1
 
             # Select Tfit calls for one region
             mu_list = tfit_dict[chromosome][region]
 #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
-            if call_remover(mu_list):
-                if verbose:
-                    sys.stdout.write("\nskipping singleton...")
+            if call_remover(mu_list,remove_singletons):
+                singletonfile.write("\n") # Write the singletons to a new output file
+                singletonfile.write("\t".join([str(chromosome), 
+                                               str(region[0]), 
+                                               str(region[1]), 
+                                               str(mu_list[0][3])]))
+#                if verbose:
+#                    sys.stdout.write("\rskipping singleton...")
                 continue
             # Calculate average number of tfit calls per sample (rounds up)
             avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1    ## I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
@@ -950,4 +951,6 @@ end = time.time()
 logfile.write("\nRun time: {} sec\n".format(end - start))
 logfile.close()
 miscallfile.close()
+if remove_singletons:
+    singletonfile.close()
 sys.exit(0)
