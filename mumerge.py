@@ -125,6 +125,7 @@ def inputs_processor():
         'output': None,
         'weights': None,
         'verbose': False,
+        'remove_singletons': False,
         'width_ratio': None
     }
 
@@ -170,11 +171,16 @@ def inputs_processor():
     )
     # VERBOSE TOGGLE (OPTIONAL)
     parser.add_argument(
+        '-r', '--remove_singletons',
+        action='store_true',
+        help="Remove calls not present in more than 1 sample"
+    )
+
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help="Verbose printing during processing."
     )
-
     args = parser.parse_args()
 
     # If -H is specified, print out additional help text and exit
@@ -185,6 +191,9 @@ def inputs_processor():
     if args.verbose:
         outdict['verbose'] = True
 
+    if args.remove_singletons:
+        outdict['remove_singletons'] = True
+    
     if not args.output:
         raise TypeError("Please specify output filename with '-o' flag. "
                         "Shound include fullpath + basename for outputs. "
@@ -488,7 +497,21 @@ def mu_dict_generator(tfit_filenames,
     
     return dict(tfit_dict)
 
-### USED IN LIKELIHOOD_CALCULATOR #############################################
+################################################################################################
+# This function will be used to filter out singletons and low coverage calls to increase overall
+# call quality. 
+def call_remover(mu_list,remove_singletons):
+    '''
+    This function removes calls that only appear in one sample
+    (Later this will be the function that removes low quality/low
+    coverage calls as well)
+    '''
+    # Check whether there is more than 1 entry at that region (should we do this as >=1 region/replicate instead?)
+    if remove_singletons:
+        if len(mu_list) == 1:
+            return True
+        else:
+            return False
 
 # This function generates the list of y-values at the corresponding x-values 
 # for a given distribution
@@ -797,6 +820,7 @@ outfilename = inputs['output']
 verbose = inputs['verbose']
 weights = inputs['weights']
 width_ratio = inputs['width_ratio']
+remove_singletons = inputs['remove_singletons']
 
 num_samps = len(tfit_filenames)
 
@@ -805,7 +829,9 @@ outbedfile = outfilename + "_MUMERGE.bed"
 logfile = open(outfilename + '.log', 'w')
 miscallfilename = outfilename + '_MISCALLS.bed'
 miscallfile = open(miscallfilename, 'w')
-
+if remove_singletons:
+    singletonfilename = outfilename + '_SINGLETONS.bed'
+    singletonfile = open(singletonfilename, 'w')
 ## Writes the initial, summary data in the miscalls and log files
 log_initializer(tfit_filenames, groupings, miscallfile, logfile)
 
@@ -859,7 +885,15 @@ with open(outbedfile, 'w') as output:
             # Select Tfit calls for one region
             mu_list = tfit_dict[chromosome][region]
 #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
-
+            if call_remover(mu_list,remove_singletons):
+                singletonfile.write("\n") # Write the singletons to a new output file
+                singletonfile.write("\t".join([str(chromosome), 
+                                               str(region[0]), 
+                                               str(region[1]), 
+                                               str(mu_list[0][3])]))
+#                if verbose:
+#                    sys.stdout.write("\rskipping singleton...")
+                continue
             # Calculate average number of tfit calls per sample (rounds up)
             avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1    ## I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
 
@@ -917,4 +951,6 @@ end = time.time()
 logfile.write("\nRun time: {} sec\n".format(end - start))
 logfile.close()
 miscallfile.close()
+if remove_singletons:
+    singletonfile.close()
 sys.exit(0)
