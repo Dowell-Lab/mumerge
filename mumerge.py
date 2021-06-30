@@ -1,12 +1,14 @@
 import sys
 sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
 import os
+import subprocess
 import socket
 import argparse
 import time
 import datetime
 import operator
 import math
+import re
 import numpy as np
 from collections import defaultdict
 from collections import Counter
@@ -120,12 +122,14 @@ def inputs_processor():
     outdict = {
         'bedfiles': [],
         'sampids': [],
+        'bamfiles': [],
         'groupings': [],
         'merged': None,
         'output': None,
         'weights': None,
         'verbose': False,
         'remove_singletons': False,
+        'coverage_filter': 0,
         'width_ratio': None
     }
 
@@ -177,6 +181,12 @@ def inputs_processor():
     )
 
     parser.add_argument(
+        '-c', '--coverage_filter',
+        type=int,
+        help="Removes calls with less than the input cutoff (default=0)",
+        default=0
+    )
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help="Verbose printing during processing."
@@ -211,6 +221,8 @@ def inputs_processor():
                     sampid_col = i
                 elif col == 'group':
                     group_col = i
+                elif col == 'bam':
+                    bam_col = i
                 else:
                     raise ValueError("Header only contains 'file', 'sampid' "
                                     ", and/or 'group' (tab delimited).")
@@ -219,12 +231,14 @@ def inputs_processor():
             samples = []
             for line in f:
                 samp = tuple(line.strip().split("\t"))
-                assert len(samp) == 3, "Sample line must contain three fields."
+                assert len(samp) >= 3, "Sample line must contain three fields."
                 samples.append(samp)
             
             # Assign bedfiles and sampids (input must have 3 columns)
-            bedfiles, sampids, groups = zip(*samples)
-            
+            if len(samp) > 0:
+                bedfiles, sampids, groups, bamfiles = zip(*samples)
+            else:
+                bedfiles, sampids, groups = zip(*samples)
             # Pull set of groups and initialize list to contain group structure
             groups = sorted(set(groups))
             grouped_samps = []
@@ -255,7 +269,9 @@ def inputs_processor():
 
     # Assign the parsed+processed args to the output dict
     outdict['bedfiles'] = bedfiles
+    outdict['coverage_filter'] = args.coverage_filter
     outdict['sampids'] = sampids
+    outdict['bamfiles'] = bamfiles
     outdict['groupings'] = grouped_samps
     outdict['merged'] = union_bedfile
     outdict['output'] = args.output
@@ -293,7 +309,6 @@ def log_initializer(tfit_filenames, groupings, miscallfile, logfile):
     for i , group in enumerate(groupings):
         logfile.write("{}\t{}\n".format(i, group))
 
-
 ###############################################################################
 # This function reads a bed file into a list of tuples, to be used as input
 # "interest_regions" in tfit_dict_initializer()
@@ -306,36 +321,70 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
 
     TODO: Incorporate the bedGraph functionality, write docstring
     '''
-    with open(file) as f:
-            # Initialize output list and counter
-            bed_list = []
-            counter = 1
+    if bedGraph:
+        with open(file) as f:
+                # Initialize output list and counter
+                bed_list = []
+                counter = 1
 
-            # Loop over the header lines and print them out until line without
-            # '#' is encountered, then split it
-            line = f.readline().strip('\n')
-            while line[0] == '#':
-                if print_header == True:
-                    print(line)
+                # Loop over the header lines and print them out until line without
+                # '#' is encountered, then split it
                 line = f.readline().strip('\n')
-            line = line.split('\t')
+                while line[0] == '#':
+                    if print_header == True:
+                        print(line)
+                    line = f.readline().strip('\n')
+                line = line.split('\t')
 
-            chromesome = line[0]
-            start = int(line[1])
-            stop = int(line[2])
-            bed_list.append((chromesome, start, stop))
+                chromesome = line[0]
+                start = int(line[1])
+                stop = int(line[2])
+                cov = int(line[3])
+                bed_list.append((chromesome, start, stop, cov))
 
             # Loop over all the lines in bed file and add to list
-            for line in f:
+                for line in f:
 
                 # Read and split non-header lines. Lines should be of the form 
                 # "chr#  start  stop  [cov  [parameters]]"
-                line = line.strip('\n').split('\t')
+                    line = line.strip('\n').split('\t')
+                    chromesome = line[0]
+                    start = int(line[1])
+                    stop = int(line[2])
+                    cov = int(line[3])
+                    bed_list.append((chromesome, start, stop, cov))
+                    counter = counter + 1
+    else:
+        with open(file) as f:
+            # Initialize output list and counter
+                bed_list = []
+                counter = 1
+
+                # Loop over the header lines and print them out until line without
+                # '#' is encountered, then split it
+                line = f.readline().strip('\n')
+                while line[0] == '#':
+                    if print_header == True:
+                        print(line)
+                    line = f.readline().strip('\n')
+                line = line.split('\t')
+
                 chromesome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
                 bed_list.append((chromesome, start, stop))
-                counter = counter + 1
+
+                # Loop over all the lines in bed file and add to list
+                for line in f:
+
+                    # Read and split non-header lines. Lines should be of the form 
+                    # "chr#  start  stop  [cov  [parameters]]"
+                    line = line.strip('\n').split('\t')
+                    chromesome = line[0]
+                    start = int(line[1])
+                    stop = int(line[2])
+                    bed_list.append((chromesome, start, stop))
+                    counter = counter + 1
 
     if count == True:
         print("Number of regions: ", counter)
@@ -373,7 +422,7 @@ def tfit_dict_initializer(interest_regions,
 ###############################################################################
 # This function scans a single tfit file and populates the tfit call regions 
 # into the provided dict
-def tfit_file_reader(filename, sampid, tfit_dict):
+def tfit_file_reader(filename, sampid, tfit_dict, coverage_filter=0, bamfile=None):
     '''
     This function scans a tfit file and populates the tfit call regions into 
     the provided dict and returns that dict with the updated information. Must 
@@ -381,8 +430,14 @@ def tfit_file_reader(filename, sampid, tfit_dict):
     TODO: This function is computationally intensive (I think). Might be the
     bottleneck. I should reevaluate the 'region_key = next()' approach
     '''
-    with open(filename, 'r') as f:
-            
+    if coverage_filter > 0:
+        tmp="tmp.bedgraph"
+        os.system("cat " + filename
+            + " | bedtools sort -i stdin | bedtools multicov -bed stdin -bams " + bamfile + " > " + tmp)
+    else:
+        tmp=filename
+    with open(tmp, 'r') as f:
+
             # Loop over the header lines and print them out
             line = f.readline().strip('\n')
             while line[0] == '#':
@@ -394,8 +449,10 @@ def tfit_file_reader(filename, sampid, tfit_dict):
             chromesome = line[0]
             start = int(line[1])
             stop = int(line[2])
-            coverage = 0
-
+            if coverage_filter > 0:
+                coverage = int(line[-1])
+            else:
+                coverage = 0
             try:
                 region_key = next(
                     key for key in tfit_dict[chromesome].keys()
@@ -416,8 +473,11 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 chromesome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
-                coverage = 0
-        
+                if coverage_filter > 0:
+                    coverage = int(line[-1])
+                else:
+                    coverage = 0
+
                 # Find start_stop_key in which the start_stop region in the 
                 # line lands
                 try:
@@ -444,7 +504,9 @@ def tfit_file_reader(filename, sampid, tfit_dict):
 def mu_dict_generator(tfit_filenames, 
                       interest_regions, 
                       sampids = ["sampid_NA"],
-                      verbose = False):
+                      verbose = False,
+                      bamfiles = [],
+                      coverage_filter = 0):
     '''
     At its core this function calls tfit_dict_initializer() on the interest 
     regions (i.e. the results of bedtools merge) and then loops over a list of 
@@ -488,19 +550,25 @@ def mu_dict_generator(tfit_filenames,
     tfit_dict = tfit_dict_initializer(interest_regions)
 
     # Zip together sample id's with filenames (both strings)
-    id_and_files = list(zip(sampids, tfit_filenames))
-    
+    if coverage_filter > 0:
+        id_and_files = list(zip(sampids, tfit_filenames, bamfiles))
+    else:
+        id_and_files = list(zip(sampids, tfit_filenames))
     #Loop over all the filenames in the tfit_filenames list and scan through 
     # each one (tfit_file_reader() is user defined)
-    for (sampid, file) in id_and_files:
-        tfit_dict = tfit_file_reader(file, sampid, tfit_dict)
     
+    if coverage_filter > 0:
+        for (sampid, file, bamfile) in id_and_files:
+            tfit_dict = tfit_file_reader(file, sampid, tfit_dict,coverage_filter=coverage_filter,bamfile=bamfile)
+    else:
+        for (sampid, file) in id_and_files:
+            tfit_dict = tfit_file_reader(file, sampid, tfit_dict)
     return dict(tfit_dict)
 
 ################################################################################################
 # This function will be used to filter out singletons and low coverage calls to increase overall
 # call quality. 
-def call_remover(mu_list,remove_singletons):
+def call_remover(mu_list,remove_singletons,coverage_filter=0):
     '''
     This function removes calls that only appear in one sample
     (Later this will be the function that removes low quality/low
@@ -509,9 +577,17 @@ def call_remover(mu_list,remove_singletons):
     # Check whether there is more than 1 entry at that region (should we do this as >=1 region/replicate instead?)
     if remove_singletons:
         if len(mu_list) == 1:
-            return True
-        else:
-            return False
+            return mu_list
+    # Check whether each call meets the user-defined RPK cutoff. If not, removes the call before more processing
+    if coverage_filter > 0:
+        badcall=[]
+        for i in range(len(mu_list)-1,-1,-1):
+            rpk = mu_list[i][2]/(((mu_list[i][1] - mu_list[i][0])/1000))
+            if rpk < coverage_filter:
+                badcall.append(mu_list[i])
+                del mu_list[i]
+        return badcall
+    return False
 
 # This function generates the list of y-values at the corresponding x-values 
 # for a given distribution
@@ -580,7 +656,7 @@ def prob_list_formatter(region, mu_list, dist="normal", width=1.0):
         samp_list = sorted(set(samples))
     except TypeError:
         print(("'mu_list' is not of the right format -- list of tuples" 
-              "(start, stop, cov, 'sampID')"))
+             "(start, stop, cov, 'sampID')"))
 
     # Intermediate dict, to grop together all the values for each sample
     region_dict = defaultdict(list)
@@ -816,11 +892,16 @@ tfit_filenames = inputs['bedfiles']
 sampids = inputs['sampids']
 groupings = inputs['groupings']
 union_bedfile = inputs['merged']
+coverage_filter = inputs['coverage_filter']
 outfilename = inputs['output']
 verbose = inputs['verbose']
 weights = inputs['weights']
 width_ratio = inputs['width_ratio']
 remove_singletons = inputs['remove_singletons']
+if coverage_filter > 0:
+    bamfiles = inputs['bamfiles']
+else:
+    bamfiles = []
 
 num_samps = len(tfit_filenames)
 
@@ -829,9 +910,8 @@ outbedfile = outfilename + "_MUMERGE.bed"
 logfile = open(outfilename + '.log', 'w')
 miscallfilename = outfilename + '_MISCALLS.bed'
 miscallfile = open(miscallfilename, 'w')
-if remove_singletons:
-    singletonfilename = outfilename + '_SINGLETONS.bed'
-    singletonfile = open(singletonfilename, 'w')
+badcallfilename = outfilename + '_BADCALLS.bed'
+badcallfile = open(badcallfilename, 'w')
 ## Writes the initial, summary data in the miscalls and log files
 log_initializer(tfit_filenames, groupings, miscallfile, logfile)
 
@@ -849,7 +929,9 @@ if verbose:
 tfit_dict = mu_dict_generator(list(tfit_filenames),
                             merge_regions,
                             sampids = list(sampids),
-                            verbose = verbose)
+                            verbose = verbose,
+                            coverage_filter = coverage_filter,
+                            bamfiles = list(bamfiles))
 
 # Count up the total number of regions (to be logged and printed out)
 total = 0
@@ -885,14 +967,16 @@ with open(outbedfile, 'w') as output:
             # Select Tfit calls for one region
             mu_list = tfit_dict[chromosome][region]
 #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
-            if call_remover(mu_list,remove_singletons):
-                singletonfile.write("\n") # Write the singletons to a new output file
-                singletonfile.write("\t".join([str(chromosome), 
-                                               str(region[0]), 
-                                               str(region[1]), 
-                                               str(mu_list[0][3])]))
-#                if verbose:
-#                    sys.stdout.write("\rskipping singleton...")
+            badcall=call_remover(mu_list,remove_singletons,coverage_filter)
+            if badcall != False:
+                if len(badcall) > 0:    
+                    for i in range(len(badcall)):
+                        badcallfile.write("\n") # Write the singletons/low coverage to a new output file
+                        badcallfile.write("\t".join([str(chromosome), 
+                                                   str(badcall[i][0]), 
+                                                   str(badcall[i][1])]))
+                    continue
+            if len(mu_list) == 0:
                 continue
             # Calculate average number of tfit calls per sample (rounds up)
             avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1    ## I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
@@ -947,10 +1031,10 @@ with open(outbedfile, 'w') as output:
 
 sys.stdout.write("\n")
 end = time.time()
-
+if coverage_filter > 0:
+    os.remove("tmp.bedgraph")
 logfile.write("\nRun time: {} sec\n".format(end - start))
 logfile.close()
 miscallfile.close()
-if remove_singletons:
-    singletonfile.close()
+badcallfile.close()
 sys.exit(0)
