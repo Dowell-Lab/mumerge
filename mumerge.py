@@ -806,151 +806,157 @@ What do I have to do?
     5) *Incorporate 'verbose' option
     6) Gotta fix the input parser and unpacking to be more flexible...
 '''
+def main():
+    # Start timing
+    start = time.time()
 
-# Start timing
-start = time.time()
+    ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
+    inputs = inputs_processor()                                                 # TEST!!!
+    tfit_filenames = inputs['bedfiles']
+    sampids = inputs['sampids']
+    groupings = inputs['groupings']
+    union_bedfile = inputs['merged']
+    outfilename = inputs['output']
+    verbose = inputs['verbose']
+    weights = inputs['weights']
+    width_ratio = inputs['width_ratio']
+    remove_singletons = inputs['remove_singletons']
 
-## Arg parse, define variables (bedfiles, sampids, groups), generate merged bed
-inputs = inputs_processor() # TEST!!!
-tfit_filenames = inputs['bedfiles']
-sampids = inputs['sampids']
-groupings = inputs['groupings']
-union_bedfile = inputs['merged']
-outfilename = inputs['output']
-verbose = inputs['verbose']
-weights = inputs['weights']
-width_ratio = inputs['width_ratio']
-remove_singletons = inputs['remove_singletons']
+    num_samps = len(tfit_filenames)
 
-num_samps = len(tfit_filenames)
+    ## Define output files and open 'log' file 'miscall' files
+    outbedfile = outfilename + "_MUMERGE.bed"
+    logfile = open(outfilename + '.log', 'w')
+    miscallfilename = outfilename + '_MISCALLS.bed'
+    miscallfile = open(miscallfilename, 'w')
+    if remove_singletons:
+        singletonfilename = outfilename + '_SINGLETONS.bed'
+        singletonfile = open(singletonfilename, 'w')
+    ## Writes the initial, summary data in the miscalls and log files
+    log_initializer(tfit_filenames, groupings, miscallfile, logfile)
 
-## Define output files and open 'log' file 'miscall' files
-outbedfile = outfilename + "_MUMERGE.bed"
-logfile = open(outfilename + '.log', 'w')
-miscallfilename = outfilename + '_MISCALLS.bed'
-miscallfile = open(miscallfilename, 'w')
-if remove_singletons:
-    singletonfilename = outfilename + '_SINGLETONS.bed'
-    singletonfile = open(singletonfilename, 'w')
-## Writes the initial, summary data in the miscalls and log files
-log_initializer(tfit_filenames, groupings, miscallfile, logfile)
+    if verbose:
+        sys.stdout.write("\nGenerating 'bedtools merge' bedfile...\n")
+    ## Load merged bedfile
+    merge_regions = bedfile_reader(union_bedfile,
+                                bedGraph=False,
+                                print_header=False,
+                                count=False)
+    if verbose:
+        sys.stdout.write("Building Tfit-regions dictionary...\n")
+    ## Generate tfit dictionary, of form 
+    # {'chr#': {(reg_start,reg_stop): [(mu_start,mu_stop,cov,'sampID'), ...]}}
+    tfit_dict = mu_dict_generator(list(tfit_filenames),
+                                merge_regions,
+                                sampids = list(sampids),
+                                verbose = verbose)
 
-if verbose:
-    sys.stdout.write("\nGenerating 'bedtools merge' bedfile...\n")
-## Load merged bedfile
-merge_regions = bedfile_reader(union_bedfile,
-                            bedGraph=False,
-                            print_header=False,
-                            count=False)
-if verbose:
-    sys.stdout.write("Building Tfit-regions dictionary...\n")
-## Generate tfit dictionary, of form 
-# {'chr#': {(reg_start,reg_stop): [(mu_start,mu_stop,cov,'sampID'), ...]}}
-tfit_dict = mu_dict_generator(list(tfit_filenames),
-                            merge_regions,
-                            sampids = list(sampids),
-                            verbose = verbose)
+    # Count up the total number of regions (to be logged and printed out)
+    total = 0
+    for region_list in tfit_dict.values():
+        total += len(region_list)
+    logfile.write("\nTotal number of bedfile regions: {}\n".format(total))
 
-# Count up the total number of regions (to be logged and printed out)
-total = 0
-for region_list in tfit_dict.values():
-    total += len(region_list)
-logfile.write("\nTotal number of bedfile regions: {}\n".format(total))
+    # Check to make sure no regions are empty, then generate distribution of 
+    # tfit calls. Write to log file.
+    call_num = []
+    for chrome, region in tfit_dict.items():
+        for interval, calls in region.items():
+            call_num.append(len(calls))
+    call_hist = Counter(call_num)
+    del(call_num)
+    logfile.write("\nDistribution of number of Tfit calls for a sample, within "
+        "a region, across all samples (#calls: #instances):\n{}\n"
+        .format(dict(call_hist)))
 
-# Check to make sure no regions are empty, then generate distribution of tfit
-# calls. Write to log file.
-call_num = []
-for chrome, region in tfit_dict.items():
-    for interval, calls in region.items():
-        call_num.append(len(calls))
-call_hist = Counter(call_num)
-del(call_num)
-logfile.write("\nDistribution of number of Tfit calls for a sample, within a "
-    "region, across all samples (#calls: #instances):\n{}\n"
-    .format(dict(call_hist)))
-
-count = 1
-with open(outbedfile, 'w') as output:
-        
-    ## Loop over every region in the tfit_dict (key1 = 'chr#', key2 = region)
-    for chromosome in sorted(tfit_dict.keys()):
-        for region in sorted(tfit_dict[chromosome].keys()):
+    # Region counter for verbose
+    count = 1
+    with open(outbedfile, 'w') as output:
             
-            # Status counter and update at stdout
-            if verbose:
-                sys.stdout.write("\rProcessed {} of {} regions"
-                                   .format(count, total))
-                count += 1
+        ## Loop over regions in the tfit_dict (key1 = 'chr#', key2 = region)
+        for chromosome in sorted(tfit_dict.keys()):
+            for region in sorted(tfit_dict[chromosome].keys()):
+                
+                # Status counter and update at stdout
+                if verbose:
+                    sys.stdout.write("\rProcessed {} of {} regions"
+                                    .format(count, total))
+                    count += 1
 
-            # Select Tfit calls for one region
-            mu_list = tfit_dict[chromosome][region]
-#            print(chromosome, region, (region[0]+region[1])/2, mu_list)
-            if call_remover(mu_list,remove_singletons):
-                singletonfile.write("\n") # Write the singletons to a new output file
-                singletonfile.write("\t".join([str(chromosome), 
-                                               str(region[0]), 
-                                               str(region[1]), 
-                                               str(mu_list[0][3])]))
-#                if verbose:
-#                    sys.stdout.write("\rskipping singleton...")
-                continue
-            # Calculate average number of tfit calls per sample (rounds up)
-            avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1    ## I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
+                # Select Tfit calls for one region
+                mu_list = tfit_dict[chromosome][region]
+    #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
+                if call_remover(mu_list,remove_singletons):
+                    # Write the singletons to a new output file
+                    singletonfile.write("\n")
+                    singletonfile.write("\t".join([str(chromosome), 
+                                                str(region[0]), 
+                                                str(region[1]), 
+                                                str(mu_list[0][3])]))
+    #                if verbose:
+    #                    sys.stdout.write("\rskipping singleton...")
+                    continue
+                # Calculate average number of tfit calls per sample (rounds up)
+                avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1            # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
 
-            # Generate prob dict (func of base pos) for region of tfit calls
-            sample_prob_dict = prob_list_formatter(region, 
-                                                    mu_list, 
-                                                    dist="normal",
-                                                    width=width_ratio) #CHECK!!!
+                # Generate prob dict (func of base pos) for region of tfit calls
+                sample_prob_dict = prob_list_formatter(region, 
+                                                        mu_list, 
+                                                        dist="normal",
+                                                        width=width_ratio)      #CHECK!!!
 
-            # Calculate combined probability array (function of base position),
-            # from 'groups' and the probability lists in sample_prob_dict() 
-            comb_prob = combined_prob_calculator(sample_prob_dict, 
-                                                    groups=groupings) #FIX!!!
+                # Calculate combined prob array (function of base position),
+                # from 'groups' and the probability lists in sample_prob_dict() 
+                comb_prob = combined_prob_calculator(sample_prob_dict, 
+                                                        groups=groupings)       #FIX!!!
 
-            # Locate local maxima (shifted to range of 'region')
-            potential_mu = maxima_loc(comb_prob, shift=region[0]) #CHECK!!!
-            
+                # Locate local maxima (shifted to range of 'region')
+                potential_mu = maxima_loc(comb_prob, shift=region[0])           #CHECK!!!
+                
 
-            # Determine which updated mu locations to keep
-            new_mu = mu_ranker(potential_mu, avg_num_mu) #MISSING!!!!
+                # Determine which updated mu locations to keep
+                new_mu = mu_ranker(potential_mu, avg_num_mu)
 
-            # If new_mu is empty, log in 'miscalls' and skip to next region
-            if len(new_mu) == 0:
-                miscallfile.write("\n")
-                miscallfile.write("\t".join([str(chromosome), 
-                                            str(region[0]), 
-                                            str(region[1]), 
-                                            str(mu_list)]))
-                continue
+                # If new_mu is empty, log in 'miscalls' and skip to next region
+                if len(new_mu) == 0:
+                    miscallfile.write("\n")
+                    miscallfile.write("\t".join([str(chromosome), 
+                                                str(region[0]), 
+                                                str(region[1]), 
+                                                str(mu_list)]))
+                    continue
 
-            # Extract (mu, sig) tuples for region from compiled tfit_dict
-            old_mu_sig = mu_sig_extract(mu_list, width=width_ratio) #DONE!!!
-#            print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
+                # Extract (mu, sig) tuples for region from compiled tfit_dict
+                old_mu_sig = mu_sig_extract(mu_list, width=width_ratio)
+    #            print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
 
-            # Calculate updated sigma values for each updated mu location
-            new_mu_sig = sigma_assigner(new_mu, old_mu_sig) #DONE!!!
+                # Calculate updated sigma values for each updated mu location
+                new_mu_sig = sigma_assigner(new_mu, old_mu_sig)
 
-            # Address collisions between updated (mu, sig) in the same region
-            final_mu_sig = collision_resolver(new_mu_sig) #CHECK!!!
+                # Address collisions between updated (mu, sig) in same region
+                final_mu_sig = collision_resolver(new_mu_sig)                   #CHECK!!!
 
-            # Convert final (mu, sig) to bed line format and write to output
-            bedlines = bed_line_formatter(
-                chromosome, 
-                final_mu_sig, 
-                width=width_ratio
-            ) #DONE!!!
-            
-            # Write updated bedlines to output file
-            for line in bedlines:
-                output.write(line)
+                # Convert final (mu, sig) to bed line format and write to output
+                bedlines = bed_line_formatter(
+                    chromosome, 
+                    final_mu_sig, 
+                    width=width_ratio
+                )
+                
+                # Write updated bedlines to output file
+                for line in bedlines:
+                    output.write(line)
 
-sys.stdout.write("\n")
-end = time.time()
+    sys.stdout.write("\n")
+    end = time.time()
 
-logfile.write("\nRun time: {} sec\n".format(end - start))
-logfile.close()
-miscallfile.close()
-if remove_singletons:
-    singletonfile.close()
-sys.exit(0)
+    logfile.write("\nRun time: {} sec\n".format(end - start))
+    logfile.close()
+    miscallfile.close()
+    if remove_singletons:
+        singletonfile.close()
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
