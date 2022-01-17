@@ -497,16 +497,16 @@ def mu_dict_generator(tfit_filenames,
     
     return dict(tfit_dict)
 
-################################################################################################
-# This function will be used to filter out singletons and low coverage calls to increase overall
-# call quality. 
+###############################################################################
+# This function will be used to filter out singletons and low coverage calls 
+# to increase overall call quality. 
 def call_remover(mu_list,remove_singletons):
     '''
     This function removes calls that only appear in one sample
     (Later this will be the function that removes low quality/low
     coverage calls as well)
     '''
-    # Check whether there is more than 1 entry at that region (should we do this as >=1 region/replicate instead?)
+    # Check whether there is more than 1 entry at that region                  # (should we do this as >=1 region/replicate instead?)
     if remove_singletons:
         if len(mu_list) == 1:
             return True
@@ -527,7 +527,7 @@ def prob_list_generator(xvals, params=None, dist="normal", width=1.0):
         mu_pos = round((params[1] + params[0]) / 2)
 
         # sigma = (1/2-bed region) * width_ratio
-        mu_sig = ((params[1] - params[0]) / 2 ) * width    ## THIS IS A KEY FACTOR IN INTERPRETTING TFIT INTERVALS!!
+        mu_sig = ((params[1] - params[0]) / 2 ) * width                        # THIS IS A KEY FACTOR IN INTERPRETTING TFIT INTERVALS!!
 
         # evaluate the normal dist at all points in xvals
         y_i = [normal(x, mu_pos, mu_sig, 1) for x in xvals]
@@ -682,7 +682,7 @@ def mu_sig_extract(mu_list, width=1.0):
     [(mu_1, sig_1), (mu_2, sig_2), ...].
     '''
     starts, stops, cov, samples = zip(*mu_list)
-    mu_sig_list = [(round((i[1] + i[0]) / 2), ((i[1] - i[0]) / 2) * width) # THIS FACTOR SAME AS ONE IN prob_list_generator()!!!
+    mu_sig_list = [(round((i[1] + i[0]) / 2), ((i[1] - i[0]) / 2) * width)     # THIS FACTOR SAME AS ONE IN prob_list_generator()!!!
                    for i in zip(starts, stops)]
 
     return mu_sig_list
@@ -811,7 +811,7 @@ def main():
     start = time.time()
 
     ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
-    inputs = inputs_processor()                                                 # TEST!!!
+    inputs = inputs_processor()                                                # TEST!!!
     tfit_filenames = inputs['bedfiles']
     sampids = inputs['sampids']
     groupings = inputs['groupings']
@@ -865,8 +865,8 @@ def main():
             call_num.append(len(calls))
     call_hist = Counter(call_num)
     del(call_num)
-    logfile.write("\nDistribution of number of Tfit calls for a sample, within "
-        "a region, across all samples (#calls: #instances):\n{}\n"
+    logfile.write("\nDistribution of number of Tfit calls for a sample, "
+        "within a region, across all samples (#calls: #instances):\n{}\n"
         .format(dict(call_hist)))
 
     # Region counter for verbose
@@ -897,21 +897,21 @@ def main():
     #                    sys.stdout.write("\rskipping singleton...")
                     continue
                 # Calculate average number of tfit calls per sample (rounds up)
-                avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1            # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
+                avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1           # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
 
-                # Generate prob dict (func of base pos) for region of tfit calls
+                # Generate prob dict (func of bp pos) for region of tfit calls
                 sample_prob_dict = prob_list_formatter(region, 
                                                         mu_list, 
                                                         dist="normal",
-                                                        width=width_ratio)      #CHECK!!!
+                                                        width=width_ratio)     #CHECK!!!
 
                 # Calculate combined prob array (function of base position),
                 # from 'groups' and the probability lists in sample_prob_dict() 
                 comb_prob = combined_prob_calculator(sample_prob_dict, 
-                                                        groups=groupings)       #FIX!!!
+                                                        groups=groupings)      #FIX!!!
 
                 # Locate local maxima (shifted to range of 'region')
-                potential_mu = maxima_loc(comb_prob, shift=region[0])           #CHECK!!!
+                potential_mu = maxima_loc(comb_prob, shift=region[0])          #CHECK!!!
                 
 
                 # Determine which updated mu locations to keep
@@ -928,15 +928,15 @@ def main():
 
                 # Extract (mu, sig) tuples for region from compiled tfit_dict
                 old_mu_sig = mu_sig_extract(mu_list, width=width_ratio)
-    #            print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
+#               print(new_mu, "LEN(OLD):", len(old_mu_sig), chromosome, region)
 
                 # Calculate updated sigma values for each updated mu location
                 new_mu_sig = sigma_assigner(new_mu, old_mu_sig)
 
                 # Address collisions between updated (mu, sig) in same region
-                final_mu_sig = collision_resolver(new_mu_sig)                   #CHECK!!!
+                final_mu_sig = collision_resolver(new_mu_sig)                  #CHECK!!!
 
-                # Convert final (mu, sig) to bed line format and write to output
+                # Convert final (mu, sig) to bed line format, write to output
                 bedlines = bed_line_formatter(
                     chromosome, 
                     final_mu_sig, 
