@@ -1,5 +1,5 @@
 import unittest
-import blank_lib
+from mumerge import mumerge
 
 class TestLib(unittest.TestCase):
     
