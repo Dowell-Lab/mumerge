@@ -1,3 +1,4 @@
+# This file is read by the package builder and runs setuptools
 [build-system]
 requires = [
     "setuptools>=54",
