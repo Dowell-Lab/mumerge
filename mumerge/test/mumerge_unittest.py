@@ -17,16 +17,17 @@ class TestLib(unittest.TestCase):
 #    def tearDown(self):
 #        print("Running tearDown...")
         
-    def test_func(self):
-        print("Running test...")
+#    def test_func(self):
+#        print("Running test...")
 #        self.assertIsNone()
 #        self.assertEqual()
 #        self.assertAlmostEqual()
 #        self.assertRaises()
     
     def test_normal(self):
-        res = mm.normal()
-        self.assert(res, )
+#        res = mm.normal()
+#        self.assertEqual(res, )
+        pass
 
     def test_overlap_check(self):
         pass
@@ -88,5 +89,8 @@ class TestLib(unittest.TestCase):
     def test_bed_line_formatter(self):
         pass
 
-if __name__ == "__main__":
+def main():
     unittest.main()
+    
+if __name__ == "__main__":
+    main()
