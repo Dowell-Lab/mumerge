@@ -224,7 +224,7 @@ def inputs_processor():
             
             # Assign bedfiles and sampids (input must have 3 columns)
             bedfiles, sampids, groups = zip(*samples)
-            
+
             # Pull set of groups and initialize list to contain group structure
             groups = sorted(set(groups))
             grouped_samps = []
@@ -264,14 +264,22 @@ def inputs_processor():
 
     return outdict
 
-
 ###############################################################################
-def log_initializer(tfit_filenames, groupings, miscallfile, logfile):
+def log_initializer(
+        tfit_filenames, 
+        outbed_filename,
+        union_bedfile, 
+        miscallfilename, 
+        output_basename,
+        logfile, 
+        miscallfile, 
+        sampids, 
+        groupings
+):
     '''
     This function writes all the header/preamble info to the miscalls and log
     files.
     '''
-
     # Write to miscall and log files
     miscallfile.write("# This file contains regions which were identified not "
                     "to contain a tfit call after merging. Hand check these.")
@@ -284,10 +292,10 @@ def log_initializer(tfit_filenames, groupings, miscallfile, logfile):
     for i, f in enumerate(tfit_filenames):
         logfile.write("{} \t {}\n".format(sampids[i], f))
 
-    logfile.write("\nOutput path: {}\n".format(outfilename))
+    logfile.write("\nOutput path: {}\n".format(output_basename))
     logfile.write("'bedtools merge' bedfile: {}\n".format(union_bedfile))
     logfile.write("Miscalls bedfile: {}\n".format(miscallfilename))
-    logfile.write("muMerge output bedfile: {}\n".format(outbedfile))
+    logfile.write("muMerge output bedfile: {}\n".format(outbed_filename))
 
     logfile.write("\nGroupings:\n")
     for i , group in enumerate(groupings):
@@ -816,7 +824,7 @@ def main():
     sampids = inputs['sampids']
     groupings = inputs['groupings']
     union_bedfile = inputs['merged']
-    outfilename = inputs['output']
+    output_basename = inputs['output']
     verbose = inputs['verbose']
     weights = inputs['weights']
     width_ratio = inputs['width_ratio']
@@ -825,15 +833,29 @@ def main():
     num_samps = len(tfit_filenames)
 
     ## Define output files and open 'log' file 'miscall' files
-    outbedfile = outfilename + "_MUMERGE.bed"
-    logfile = open(outfilename + '.log', 'w')
-    miscallfilename = outfilename + '_MISCALLS.bed'
+    outbed_filename = output_basename + "_MUMERGE.bed"
+    miscallfilename = output_basename + '_MISCALLS.bed'
+
+    logfile = open(output_basename + '.log', 'w')
     miscallfile = open(miscallfilename, 'w')
+
+    # Open singletons file
     if remove_singletons:
-        singletonfilename = outfilename + '_SINGLETONS.bed'
+        singletonfilename = output_basename + '_SINGLETONS.bed'
         singletonfile = open(singletonfilename, 'w')
+
     ## Writes the initial, summary data in the miscalls and log files
-    log_initializer(tfit_filenames, groupings, miscallfile, logfile)
+    log_initializer(        
+        tfit_filenames, 
+        outbed_filename,
+        union_bedfile, 
+        miscallfilename, 
+        output_basename,
+        logfile, 
+        miscallfile, 
+        sampids, 
+        groupings
+    )
 
     if verbose:
         sys.stdout.write("\nGenerating 'bedtools merge' bedfile...\n")
@@ -871,7 +893,7 @@ def main():
 
     # Region counter for verbose
     count = 1
-    with open(outbedfile, 'w') as output:
+    with open(outbed_filename, 'w') as output:
             
         ## Loop over regions in the tfit_dict (key1 = 'chr#', key2 = region)
         for chromosome in sorted(tfit_dict.keys()):
@@ -912,7 +934,6 @@ def main():
 
                 # Locate local maxima (shifted to range of 'region')
                 potential_mu = maxima_loc(comb_prob, shift=region[0])          #CHECK!!!
-                
 
                 # Determine which updated mu locations to keep
                 new_mu = mu_ranker(potential_mu, avg_num_mu)
