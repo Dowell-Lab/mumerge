@@ -119,6 +119,7 @@ def inputs_processor():
 
     # This dictionary stories all the parsed and processed args
     outdict = {
+        'input': None,
         'bedfiles': [],
         'sampids': [],
         'groupings': [],
@@ -201,6 +202,7 @@ def inputs_processor():
                         "Check help menu for further information.")
 
     if args.input:
+        outdict['input'] = args.input
         with open(args.input, "r") as f:
             header = f.readline().strip().lstrip('#').split("\t")
 
@@ -267,6 +269,7 @@ def inputs_processor():
 
 ###############################################################################
 def log_initializer(
+        input_file,
         tfit_filenames, 
         outbed_filename,
         union_bedfile, 
@@ -294,8 +297,10 @@ def log_initializer(
         f_path = Path(f)
         logfile.write("{} \t {}\n".format(sampids[i], f_path.absolute()))
 
+    input_path = Path(input_file)
+    logfile.write("\ninput file: {}\n".format(input_path.absolute()))
     out_basename_path = Path(output_basename)
-    logfile.write("\noutput path: {}\n".format(out_basename_path.absolute()))
+    logfile.write("output path: {}\n".format(out_basename_path.absolute()))
     logfile.write("'bedtools merge' bedfile: {}\n".format(union_bedfile))
     logfile.write("miscalls bedfile: {}\n".format(miscallfilename))
     logfile.write("muMerge output bedfile: {}\n".format(outbed_filename))
@@ -823,7 +828,8 @@ def main():
     start = time.time()
 
     ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
-    inputs = inputs_processor()                                                # TEST!!!
+    inputs = inputs_processor()  
+    input_file = inputs['input']                                              # TEST!!!
     tfit_filenames = inputs['bedfiles']
     sampids = inputs['sampids']
     groupings = inputs['groupings']
@@ -849,7 +855,8 @@ def main():
         singletonfile = open(singletonfilename, 'w')
 
     ## Writes the initial, summary data in the miscalls and log files
-    log_initializer(        
+    log_initializer(
+        input_file,        
         tfit_filenames, 
         outbed_filename,
         union_bedfile, 
