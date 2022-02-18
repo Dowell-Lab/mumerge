@@ -12,6 +12,7 @@ from collections import defaultdict
 from collections import Counter
 from functools import reduce
 from itertools import combinations
+from pathlib import Path
 
 #import mumerge_test_unit as mt
 
@@ -290,12 +291,15 @@ def log_initializer(
     logfile.write("\n# Sample_ID \t Filename\n")
 
     for i, f in enumerate(tfit_filenames):
-        logfile.write("{} \t {}\n".format(sampids[i], f))
+        f_path = Path(f)
+        logfile.write("{} \t {}\n".format(sampids[i], f_path.absolute()))
 
-    logfile.write("\nOutput path: {}\n".format(output_basename))
+    out_basename_path = Path(output_basename)
+    logfile.write("\noutput path: {}\n".format(out_basename_path.absolute()))
     logfile.write("'bedtools merge' bedfile: {}\n".format(union_bedfile))
-    logfile.write("Miscalls bedfile: {}\n".format(miscallfilename))
+    logfile.write("miscalls bedfile: {}\n".format(miscallfilename))
     logfile.write("muMerge output bedfile: {}\n".format(outbed_filename))
+    
 
     logfile.write("\nGroupings:\n")
     for i , group in enumerate(groupings):
