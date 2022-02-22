@@ -246,11 +246,21 @@ def inputs_processor():
                 union_bedfile = args.merged
             else:
                 # Generate merged bed file
-                union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
+                srcdir = Path(__file__).absolute().parent
 
-                os.system("cat " + " ".join(bedfiles)
-                    + " | bedtools sort -i stdin | bedtools merge -i stdin > "
-                    + union_bedfile)
+                union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
+                bedtools = "".join([str(srcdir), "/bin/bedtools"])
+
+                cat = "cat " + " ".join(bedfiles)
+                sort = " ".join(["|", bedtools, "sort -i stdin"])
+                merge = " ".join(["|", bedtools, "merge -i stdin"])
+                out = " ".join([">", union_bedfile])
+
+                os.system(" ".join([cat, sort, merge, out]))
+
+#                os.system("cat " + " ".join(bedfiles)
+#                    + " | bedtools sort -i stdin | bedtools merge -i stdin > "
+#                    + union_bedfile)
 
     else:
         raise TypeError("Please specify input file with '-i' flag. "
