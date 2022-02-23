@@ -158,7 +158,7 @@ def inputs_processor():
         type=float,
         help=("The ratio of a the sigma for the corresponding probabilty "
             "distribution to the bed region (half-width) --- sigma:half-bed "
-            "(default: 1???). The choice for this parameter will depend on "
+            "(default: 1). The choice for this parameter will depend on "
             "the data type as well as how bed regions were inferred from the "
             "expression data."),
         default=1.0
@@ -277,6 +277,7 @@ def inputs_processor():
 
     return outdict
 
+
 ###############################################################################
 def log_initializer(
         input_file,
@@ -370,6 +371,7 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
     else:
         return bed_list
 
+
 ###############################################################################
 ### USED IN MU_DICT_GENERATOR() 
 ###############################################################################
@@ -396,6 +398,7 @@ def tfit_dict_initializer(interest_regions,
 
             tfit_dict[chromesome][(start, stop)] = []             
     return tfit_dict
+
 
 ###############################################################################
 # This function scans a single tfit file and populates the tfit call regions 
@@ -457,6 +460,7 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 except StopIteration:
                     continue
     return tfit_dict
+
 
 ###############################################################################
 # This function reads in, from an input path, a list of tfit output files and 
@@ -524,6 +528,7 @@ def mu_dict_generator(tfit_filenames,
     
     return dict(tfit_dict)
 
+
 ###############################################################################
 # This function will be used to filter out singletons and low coverage calls 
 # to increase overall call quality. 
@@ -539,6 +544,7 @@ def call_remover(mu_list,remove_singletons):
             return True
         else:
             return False
+
 
 # This function generates the list of y-values at the corresponding x-values 
 # for a given distribution
@@ -564,6 +570,7 @@ def prob_list_generator(xvals, params=None, dist="normal", width=1.0):
         raise ValueError("Must specify either 'normal' or 'uni' for 'dist'")
     return y_i
 
+
 ###############################################################################
 # THIS IS ONE OF THE TWO FUNCTIONS I'M USING TO AVOID SOME LOGICAL CHECKS IN 
 # THE PROB_CALCULATOR()
@@ -585,6 +592,7 @@ def prob_sum(sample_prob_list):
     #joint_prob_id = "Cummulative_Prob"
     joint_prob_list = [sum(i) for i in zip(*sample_prob_list)]
     return joint_prob_list
+
 
 ###############################################################################
 # This function generates lists of probabilities values from the tfit_dict 
@@ -625,6 +633,7 @@ def prob_list_formatter(region, mu_list, dist="normal", width=1.0):
         region_dict[id] = prob_sum(probs)
 
     return dict(region_dict)
+
 
 ###############################################################################
 # This function calculates joint/cummulative probabilties for two or more 
@@ -675,6 +684,7 @@ def combined_prob_calculator(sample_prob_dict, groups=None):
 
     return combined_prob
 
+
 ###############################################################################
 ## This function locates the positions of the local maxima in a list
 def maxima_loc(samp_list, shift=0):
@@ -699,6 +709,7 @@ def maxima_loc(samp_list, shift=0):
     
     return maxima_indicies
 
+
 ###############################################################################
 ## This function extracts the (mu, sig) values from the tfit_dict for a given
 # chr and region and outputs the list of tuples.
@@ -713,6 +724,7 @@ def mu_sig_extract(mu_list, width=1.0):
                    for i in zip(starts, stops)]
 
     return mu_sig_list
+
 
 ###############################################################################
 ## This function determins which of the newly identified mu positions to keep 
@@ -729,6 +741,7 @@ def mu_ranker(mus, num):
     final_sorted_mu = sorted(rank_extracted_mu, key=lambda x: x[0])
 
     return final_sorted_mu
+
 
 ###############################################################################
 ## This function finds the tfit mu-calls that are closest to each likelihood
@@ -760,6 +773,7 @@ def sigma_assigner(new_mu, old_mu_sig):
     new_mu_updated = [e for e in zip(new_pos, new_sigs, new_prob)]
 
     return new_mu_updated
+
 
 ###############################################################################
 ## This function resolves collisions between newly calculated bed intervals 
@@ -801,6 +815,7 @@ def collision_resolver(mu_sig_list):
 
     return mus
 
+
 ###############################################################################
 ## This function defines the boundaries of the bed region, using the updated
 # sigmas (from sigma_assigner()) and outputs a list of strings formatted as 
@@ -824,15 +839,6 @@ def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
 ###############################################################################
 ## MAIN
 ###############################################################################
-'''
-What do I have to do? 
-    1) *Figure out why some of the 'new_mu' lists are empty
-    2) *rewrite mu_sig_extract so that it takes in  'mu_list' instead of reinventing that wheel
-    3) *Write the status output using sys.stdout.write()
-    4) *Figure out what to write to the log file
-    5) *Incorporate 'verbose' option
-    6) Gotta fix the input parser and unpacking to be more flexible...
-'''
 def main():
     # Start timing
     start = time.time()
