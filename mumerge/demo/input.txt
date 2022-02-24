@@ -1,0 +1,3 @@
+#file	sampid	group
+./demo/a.bed	sampA	1
+./demo/b.bed	sampB	2
