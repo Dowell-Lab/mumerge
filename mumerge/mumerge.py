@@ -1,13 +1,12 @@
 import sys
 sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
-import os
-import socket
 import argparse
-import time
-import datetime
-import operator
-import math
 import numpy as np
+from os import system
+from time import time
+from socket import gethostname
+from operator import mul
+from math import ceil
 from collections import defaultdict
 from collections import Counter
 from functools import reduce
@@ -63,7 +62,7 @@ def prod(iterable):
     This is the product equivalent of sum(). It requires functools reduce() and
     operator module. Apparently this is also in numpy...
     '''
-    return reduce(operator.mul, iterable)
+    return reduce(mul, iterable)
 
 
 def normalizer(values, scaler=1, integral=False):
@@ -245,7 +244,7 @@ def inputs_processor():
                 # User defined bedfile
                 union_bedfile = args.merged
             else:
-                # Generate merged bed file
+                # Generate merged bed file using bedtools binary
                 srcdir = Path(__file__).absolute().parent
 
                 union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
@@ -256,7 +255,7 @@ def inputs_processor():
                 merge = " ".join(["|", bedtools, "merge -i stdin"])
                 out = " ".join([">", union_bedfile])
 
-                os.system(" ".join([cat, sort, merge, out]))
+                system(" ".join([cat, sort, merge, out]))
 
 #                os.system("cat " + " ".join(bedfiles)
 #                    + " | bedtools sort -i stdin | bedtools merge -i stdin > "
@@ -301,7 +300,7 @@ def log_initializer(
 
     logfile.write("Running: {}\n".format(sys.argv[0]))
     logfile.write("Python:\n{}\n".format(sys.version))
-    logfile.write("Hostname: {}\n".format(socket.gethostname()))
+    logfile.write("Hostname: {}\n".format(gethostname()))
     logfile.write("\n# Sample_ID \t Filename\n")
 
     for i, f in enumerate(tfit_filenames):
@@ -841,7 +840,7 @@ def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
 ###############################################################################
 def main():
     # Start timing
-    start = time.time()
+    start = time()
 
     ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
     inputs = inputs_processor()  
@@ -946,7 +945,7 @@ def main():
     #                    sys.stdout.write("\rskipping singleton...")
                     continue
                 # Calculate average number of tfit calls per sample (rounds up)
-                avg_num_mu = math.ceil(len(mu_list) / num_samps) + 1           # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
+                avg_num_mu = ceil(len(mu_list) / num_samps) + 1           # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
 
                 # Generate prob dict (func of bp pos) for region of tfit calls
                 sample_prob_dict = prob_list_formatter(region, 
@@ -996,7 +995,7 @@ def main():
                     output.write(line)
 
     sys.stdout.write("\n")
-    end = time.time()
+    end = time()
 
     logfile.write("\nRun time: {} sec\n".format(end - start))
     logfile.close()
