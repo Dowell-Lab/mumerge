@@ -1,5 +1,5 @@
 import sys
-sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
+#sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
 import argparse
 import numpy as np
 from os import system
