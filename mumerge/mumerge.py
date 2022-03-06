@@ -1,3 +1,16 @@
+
+"""
+usage: mumerge [-h | -H] [-i ] [-o ] [-w] [-m] [-r] [-v]
+"""
+
+
+__author__ = 'Jacob T. Stanley'
+__maintainer__ = 'Jacob T. Stanley'
+__email__ = 'jacob.stanley@colorado.edu'
+__license__ = 'GPL v3.0'
+__version__ = '0.0.1'
+
+# Imports =====================================================================
 import sys
 #sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
 import argparse
@@ -15,6 +28,7 @@ from pathlib import Path
 
 #import mumerge_test_unit as mt
 
+#==============================================================================
 ### SOME LOW LEVEL FUNCTIONS THAT GET UTILIZED IN THE MAJOR FUNCTIONS #########
 def normal(x, pos, sig, scale):
     '''
