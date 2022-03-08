@@ -30,7 +30,7 @@ From PyPI:
 
 From GitHub:
 ::
-    python -m pip install git+https://github.com/DowellLab/mumerge
+    python -m pip install git+https://github.com/Dowell-Lab/mumerge
 
 If successful, ``mumerge`` should now be callable from the command line.
 
@@ -38,11 +38,11 @@ In order to upgrade to the latest version of ``mumerge`` from a previous one, in
 
 Via ``git clone``
 ---------------
-Alternatively, you can download `mumerge` and all supporting files by cloning the GitHub repository to your local machine using `git`:
+Alternatively, you can download ``mumerge`` and all supporting files by cloning the GitHub repository to your local machine using ``git``:
+::
+    git clone https://github.com/Dowell-Lab/mumerge.git
 
-`git clone https://github.com/DowellLab/mumerge.git`
-
-If you clone the repo, you may want to add directory `mumerge/mumerge` to your system `PATH` variable (this will depend on your platform/OS) so that you can run `mumerge` directly from the command-line.
+If you clone the repo, you may want to add directory ``mumerge/mumerge`` to your system ``PATH`` variable (this will depend on your platform/OS) so that you can run ``mumerge`` directly from the command-line.
 
 Dependencies
 ============
