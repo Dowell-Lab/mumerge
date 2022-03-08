@@ -37,7 +37,7 @@ setup(
     name='mumerge',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="A tool for combining bed regions from multiple samples in a probabilistically prinipled manner.",
+    description="A tool for combining bed regions from multiple bed files in a probabilistically prinipled manner.",
     long_description=readme,
     author="Jacob T. Stanley",
     author_email='jacob.stanley@colorado.edu',
