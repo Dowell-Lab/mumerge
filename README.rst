@@ -1,5 +1,5 @@
 =======
-mumerge
+muMerge
 =======
 
 ..
@@ -9,8 +9,6 @@ mumerge
   .. image:: https://img.shields.io/pypi/v/mumerge.svg
         :target: https://pypi.python.org/pypi/mumerge
 
-muMerge
-=======
 
 A tool for combining bed regions from multiple bed files in a probabilistically-prinipled manner.
 
@@ -19,26 +17,26 @@ A tool for combining bed regions from multiple bed files in a probabilistically-
 
 Installation
 ============
-In order to use `mumerge` it is recommended to install it within a virtual environment or package manager---e.g. `venv` or `conda`.
+In order to use ``mumerge`` it is recommended to install it within a virtual environment or package manager---e.g. ``venv`` or ``conda``.
 
-Via `pip`
+Via ``pip``
 ---------
-The simplest way of installing `mumerge` within your virtual environment is using `pip`. Be sure to use the appropriate version of Python if you have multiple versions installed. `mumerge` can then be installed with one of the following commands. 
+The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
 
-From PyPI
+From PyPI:
+::
+    python -m pip install mumerge
 
-`python -m pip install mumerge`
 
+From GitHub:
+::
+    python -m pip install git+https://github.com/DowellLab/mumerge
 
-From GitHub
+If successful, ``mumerge`` should now be callable from the command line.
 
-`python -m pip install git+https://github.com/DowellLab/mumerge`
+In order to upgrade to the latest version of ``mumerge`` from a previous one, include ``--upgrade`` in other of the previous ``pip`` commands.
 
-If successful, `mumerge` should now be callable from the command line.
-
-In order to upgrade to the latest version of `mumerge` from a previous one, include `--upgrade` in other of the previous `pip` commands.
-
-Via `git clone`
+Via ``git clone``
 ---------------
 Alternatively, you can download `mumerge` and all supporting files by cloning the GitHub repository to your local machine using `git`:
 
