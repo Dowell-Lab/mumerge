@@ -1,13 +1,12 @@
 
 """
-usage: mumerge [-h | -H] [-i ] [-o ] [-w] [-m] [-r] [-v]
+usage: mumerge [-h | -H] [-i INPUT] [-o OUTPUT] [-w WIDTH] [-m MERGE] [-r] [-v]
 """
-
 
 __author__ = 'Jacob T. Stanley'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
-__license__ = 'GPL v3.0'
+__license__ = 'MIT'
 __version__ = '0.0.1'
 
 # Imports =====================================================================
