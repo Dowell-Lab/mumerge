@@ -109,10 +109,10 @@ def inputs_processor():
 
     input_help = ("Input file (full path) containing bedfiles, sample ID's "
         "and \nreplicate grouping names (tab delimited). Each sample on "
-        "separate line. First line header, equal to "
-        "'#file<TAB>sampid<TAB>group', required. 'file' must be full path. "
-        "'sampid' can be any string. 'group' can be string or integer. See "
-        "'-H' help flag for more information.")
+        "separate \nline. First line header, equal to "
+        "'#file<TAB>sampid<TAB>group', \nrequired. 'file' must be full path. "
+        "'sampid' can be any string. \n'group' can be string or integer. See "
+        "'-H' help flag for more \ninformation.")
     input_format = ("\nInput file containing bedfiles, sample ID's, and "
         "replicate groupings. Input\nfile (indicated by the '-i' flag) "
         "should be of the following (tab delimited)\nformat:\n\n"
@@ -143,7 +143,10 @@ def inputs_processor():
         'width_ratio': None
     }
 
-    parser = argparse.ArgumentParser(description=description_text)
+    parser = argparse.ArgumentParser(
+        description=description_text,
+        formatter_class=argparse.RawTextHelpFormatter
+    )
 
     # ADDITIONAL HELP TEXT FLAG
     parser.add_argument(
@@ -170,9 +173,9 @@ def inputs_processor():
         type=float,
         help=("The ratio of a the sigma for the corresponding probabilty \n"
             "distribution to the bed region (half-width) --- sigma:half-bed "
-            "(default: 1). The choice for this parameter will depend on "
-            "the data type as well as how bed regions were inferred from the "
-            "expression data."),
+            "\n(default: 1). The choice for this parameter will depend on "
+            "the \ndata type as well as how bed regions were inferred from "
+            "the \nexpression data."),
         default=1.0
     )
     # PRECOMPILED MERGE BEDFILE (OPTIONAL)
@@ -181,7 +184,7 @@ def inputs_processor():
         type=str,
         help=("Sorted bedfile (full path) containing the regions over which \n"
             "to combine the sample bedfiles. If not specified, mumerge will "
-            "generate one directly from the sample bedfiles.")
+            "\ngenerate one directly from the sample bedfiles.")
     )
     # VERBOSE TOGGLE (OPTIONAL)
     parser.add_argument(
