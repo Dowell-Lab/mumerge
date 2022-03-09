@@ -62,7 +62,6 @@ Usage
 =====
 
 For general usage, used the help command
-
 ::
     python mumerge.py -h
 
