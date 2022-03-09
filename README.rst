@@ -55,11 +55,11 @@ Bedtools
 muMerge relies on ``bedtools`` in order to group together those bed regions from the input bed files that will be combined by muMerge probabilistically. This grouping is done using the ``bedtools merge`` command. A ``bedtools`` binary is included as a part of the package, located at ``/mumerge/bin/bedtools``.
 
 Running demo
-============
+------------
 To demonstrate the functionality of muMerge a simple example including bedfiles and an input file are included in the package.
 
 Usage
-=====
+-----
 
 For general usage, used the help command:
 
