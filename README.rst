@@ -46,22 +46,22 @@ If you clone the repo, you may want to add directory ``mumerge/mumerge`` to your
 
 Dependencies
 ============
-* Python\>=3.6 <https://www.python.org/downloads/>
-* NumPy <https://numpy.org/>
-* bedtools <https://bedtools.readthedocs.io/en/latest/content/installation.html>
+* Python\>=3.6 https://www.python.org/downloads/
+* NumPy https://numpy.org/
+* bedtools https://bedtools.readthedocs.io/en/latest/content/installation.html
 
 Bedtools
 --------
 muMerge relies on ``bedtools`` in order to group together those bed regions from the input bed files that will be combined by muMerge probabilistically. This grouping is done using the ``bedtools merge`` command. A ``bedtools`` binary is included as a part of the package, located at ``/mumerge/bin/bedtools``.
 
 Running demo
-------------
+============
 To demonstrate the functionality of muMerge a simple example including bedfiles and an input file are included in the package.
 
 Usage
------
+=====
 
-For general usage, used the help command:
+For general usage, used the help command
 
 ::
     python mumerge.py -h
