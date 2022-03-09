@@ -25,12 +25,12 @@ The simplest way of installing ``mumerge`` within your virtual environment is us
 
 From PyPI:
 ::
-    python -m pip install mumerge
+    $ python -m pip install mumerge
 
 
 From GitHub:
 ::
-    python -m pip install git+https://github.com/Dowell-Lab/mumerge
+    $ python -m pip install git+https://github.com/Dowell-Lab/mumerge
 
 If successful, ``mumerge`` should now be callable from the command line.
 
@@ -40,7 +40,7 @@ Via ``git clone``
 ---------------
 Alternatively, you can download ``mumerge`` and all supporting files by cloning the GitHub repository to your local machine using ``git``:
 ::
-    git clone https://github.com/Dowell-Lab/mumerge.git
+    $ git clone https://github.com/Dowell-Lab/mumerge.git
 
 If you clone the repo, you may want to add directory ``mumerge/mumerge`` to your system ``PATH`` variable (this will depend on your platform/OS) so that you can run ``mumerge`` directly from the command-line.
 
@@ -61,12 +61,11 @@ To demonstrate the functionality of muMerge a simple example including bedfiles 
 Usage
 =====
 
-For general usage, used the help command
+For general usage, used the help command:
 ::
-    python mumerge.py -h
+    $ mumerge -h
 
-This will return the general commands needed to run muMerge.
-
+This will return the general commands needed to run muMerge:
 ::
     usage: mumerge.py [-h] [-H] [-i INPUT] [-o OUTPUT] [-w WIDTH] [-m MERGED] [-r] [-v]
 
@@ -90,13 +89,30 @@ This will return the general commands needed to run muMerge.
 Input file
 ----------
 The ``<INPUT>`` file is a tab delimited text file that contains paths to BED files to be merged along with sample names as condition/replicate information for each sample. In the example below, there are 4 samples with two treatment groups.
-
 ::
     #file   sampid  group
     /path/to/sample1.bed    sample1 control
     /path/to/sample2.bed    sample2 control
     /path/to/sample3.bed    sample3 treatment
     /path/to/sample4.bed    sample4 treatment
+
+You can find this information using the ``-H`` flag---i.e. running ``mumerge -H``, which will return the following:
+::
+    Input file containing bedfiles, sample ID's, and replicate groupings. Input
+    file (indicated by the '-i' flag) should be of the following (tab delimited)
+    format:
+
+    #file   sampid  group
+    /full/file/path/filename1.bed   sampid1 A
+    /full/file/path/filename2.bed   sampid2 B
+    ...
+
+    Header line indicated by '#' character must be included and fields must
+    follow the same order as non-header lines. The order of subsequent lines does
+    matter. 'group' identifiers should group files that are technical/biological
+    replicates. Different experimental conditions should recieve different 'group'
+    identifiers. The 'group' identifier can be of type 'int' or 'str'. If 'sampid'
+    is not specified, then default sample ID's will be used.
 
 Output files
 ------------
