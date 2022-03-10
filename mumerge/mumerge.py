@@ -7,7 +7,7 @@ __author__ = 'Jacob T. Stanley'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
 __license__ = 'MIT'
-__version__ = '0.0.1'
+__version__ = '0.0.3'
 
 # Imports =====================================================================
 import sys
@@ -199,6 +199,8 @@ def inputs_processor():
         help="Verbose printing during processing."
     )
     args = parser.parse_args()
+    
+    print(f"SCRIPT DIRECTORY: {Path(__file__).absolute().parent}")
 
     # If -H is specified, print out additional help text and exit
     if args.HELP:
