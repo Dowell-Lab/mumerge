@@ -9,10 +9,10 @@ Installation
 In order to use ``mumerge`` it is recommended to install it within a virtual environment or package manager---e.g. ``venv`` or ``conda``.
 
 Via ``pip``
----------
+-----------
 The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
 
-From PyPI:
+From PyPI
 ::
     $ python -m pip install mumerge
 
@@ -26,7 +26,7 @@ If successful, ``mumerge`` should now be callable from the command line.
 In order to upgrade to the latest version of ``mumerge`` from a previous one, include ``--upgrade`` in other of the previous ``pip`` commands.
 
 Via ``git clone``
----------------
+-----------------
 Alternatively, you can download ``mumerge`` and all supporting files by cloning the GitHub repository to your local machine using ``git``:
 ::
     $ git clone https://github.com/Dowell-Lab/mumerge.git
