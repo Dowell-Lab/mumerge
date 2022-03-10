@@ -39,6 +39,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     description="A tool for combining bed regions from multiple bed files in a probabilistically prinipled manner.",
     long_description=readme,
+    long_description_content_type='text/x-rst',
     author="Jacob T. Stanley",
     author_email='jacob.stanley@colorado.edu',
     url='https://github.com/jtstanley/mumerge',
