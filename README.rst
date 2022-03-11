@@ -6,8 +6,20 @@ A tool for combining bed regions from multiple bed files in a probabilistically-
 
 Installation
 ============
-In order to use ``mumerge`` it is recommended to install it within a virtual environment or package manager---e.g. ``venv`` or ``conda``.
+It is recommended to install ``mumerge`` using a virtual environment or package manager---e.g. ``venv`` or ``conda``. Specifically, because ``bedtools`` must be available at the command line we recommend you create a new environment with ``conda`` and install ``bedtools`` from bioconda, as follows:
+::
 
+    (base) $ conda create -n mumerge_env
+    (base) $ conda activate mumerge_env
+    (mumerge_env) $ conda install -c bioconda bedtools
+
+To confirm installation, check the ``bedtools`` version:
+::
+
+    (mumerge_env) $ bedtools --version
+    bedtools v2.30.0
+
+Now, with ``bedtools`` available within your environment
 Via ``pip``
 -----------
 The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
@@ -41,6 +53,8 @@ Dependencies
 * Python\>=3.6 https://www.python.org/downloads/
 * NumPy https://numpy.org/
 * bedtools https://bedtools.readthedocs.io/en/latest/content/installation.html
+
+NumPy will be installed automatically when using ``pip`` to install ``mumerge``. However, ``bedtools`` must be installed manually and made available in your system path prior to running ``mumerge``.
 
 Bedtools
 --------
