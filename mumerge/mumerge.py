@@ -121,7 +121,8 @@ def inputs_processor():
         "'#file<TAB>sampid<TAB>group', \nrequired. 'file' must be full path. "
         "'sampid' can be any string. \n'group' can be string or integer. See "
         "'-H' help flag for more \ninformation.")
-    input_format = ("\nInput file containing bedfiles, sample ID's, and "
+    input_format = ("\nINPUT FILE\n----------"
+        "\nInput file containing bedfiles, sample ID's, and "
         "replicate groupings. Input\nfile (indicated by the '-i' flag) "
         "should be of the following (tab delimited)\nformat:\n\n"
         "#file\tsampid\tgroup\n"
@@ -136,7 +137,17 @@ def inputs_processor():
         "identifiers. The 'group' identifier can be of type 'int' or 'str'. "
         "If 'sampid'\nis not specified, then default sample ID's will be "
         "used.\n")
-
+    demo_dir = "".join([str(Path(__file__).absolute().parent), "/demo/"])
+    demo_details = ("\nDEMO\n----\nmuMerge demo files directory:"
+        f"\n{demo_dir}\n\n"
+        "This directory contains two example bed files (a.bed and b.bed) as "
+        "well as an \nexample input file (mumerge_demo.input) that will "
+        "process the two bed files. \nYou can run this demo as follows:\n\n"
+        f"$ mumerge -i {demo_dir}mumerge_demo.input -o ./demo_out\n\n"
+        "This will produce the following outputs in your current working "
+        "directory:\n\nOUTPUT FILES:\n"
+        "./demo_out.log\n./demo_out_BEDTOOLS_MERGE.bed\n"
+        "./demo_out_MISCALLS.bed\n./demo_out_MUMERGE.bed\n")
     # This dictionary stories all the parsed and processed args
     outdict = {
         'input': None,
@@ -158,9 +169,9 @@ def inputs_processor():
 
     # ADDITIONAL HELP TEXT FLAG
     parser.add_argument(
-        '-H', '--HELP', 
+        '-H', '--HELP',
         action='store_true', 
-        help="Verbose help info about the input format."
+        help="Verbose help info about the input format and mumerge demo."
     )
     # INPUT FILE ARG (contains bedfiles, sampids, and groupings)
     parser.add_argument(
@@ -206,11 +217,12 @@ def inputs_processor():
         action='store_true',
         help="Verbose printing during processing."
     )
+
     args = parser.parse_args()
     
     # If -H is specified, print out additional help text and exit
     if args.HELP:
-        print(input_format +  input_details)
+        print(input_format +  input_details + demo_details)
         sys.exit()
 
     if args.verbose:

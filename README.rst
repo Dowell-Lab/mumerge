@@ -6,6 +6,7 @@ A tool for combining bed regions from multiple bed files in a probabilistically-
 
 Installation
 ============
+
 It is recommended to install ``mumerge`` using a virtual environment or package manager---e.g. ``venv`` or ``conda``. Specifically, because ``bedtools`` must be available at the command line we recommend you create a new environment with ``conda`` and install ``bedtools`` from bioconda, as follows:
 ::
 
@@ -30,13 +31,12 @@ From PyPI (recommended):
 
     $ python -m pip install mumerge
 
+If successful, ``mumerge`` should now be callable from the command line.
 
 From GitHub:
 ::
 
     $ python -m pip install git+https://github.com/Dowell-Lab/mumerge
-
-If successful, ``mumerge`` should now be callable from the command line.
 
 In order to upgrade to the latest version of ``mumerge`` from a previous one, include ``--upgrade`` in other of the previous ``pip`` commands.
 
@@ -51,6 +51,7 @@ If you clone the repo, you may want to add directory ``mumerge/mumerge`` to your
 
 Dependencies
 ============
+
 * Python\>=3.6 https://www.python.org/downloads/
 * NumPy https://numpy.org/
 * bedtools https://bedtools.readthedocs.io/en/latest/content/installation.html
@@ -63,12 +64,13 @@ muMerge relies on ``bedtools`` in order to group together those bed regions from
 
 Running demo
 ============
+
 To demonstrate the functionality of muMerge a simple example including bedfiles and an input file are included in the package.
 
 Usage
 =====
 
-For general usage, used the help command:
+For general usage, see the help menu:
 ::
 
     $ mumerge -h
@@ -142,12 +144,17 @@ Output files
 ------------
 muMerge returns the merged regions in BED file format (``project_id_MUMERGE.bed``). Additionally, a log file (``project_id.log``) that details the summary of the run is also inlcuded along with intermediate files (``project_id_MISCALLS.bed`` and ``project_id_BEDTOOLS_MERGE.bed``).
 
+Demo
+----
+The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them.
+
 Runtime
 -------
 The overall run time depends on the the number for input BED files and regions being merged. A test case, where 8 samples (~30,000 regions) with 6 condition groups were merged, took about 12 minutes on a MacBook Pro iCore i9 2.3 GHz running macOS v 10.14.6.
 
 Cite
 ====
+
 Please cite the following article if you use muMerge: `Transcription factor enrichment analysis (TFEA) quantifies the activity of multiple transcription factors from a single experiment <https://doi.org/10.1038/s42003-021-02153-7>`
 
 BibTeX citation:
