@@ -208,8 +208,6 @@ def inputs_processor():
     )
     args = parser.parse_args()
     
-    print(f"SCRIPT DIRECTORY: {Path(__file__).absolute().parent}")
-
     # If -H is specified, print out additional help text and exit
     if args.HELP:
         print(input_format +  input_details)
@@ -294,7 +292,7 @@ def inputs_processor():
                 
                 # Run bedtools sort + merge
                 system(" ".join([cat, sort, merge, out]))
-                
+
     else:
         raise TypeError("Please specify input file with '-i' flag. "
                         "For more details run mumerge with the '-H' flag.")
