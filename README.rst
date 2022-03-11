@@ -19,12 +19,13 @@ To confirm installation, check the ``bedtools`` version:
     (mumerge_env) $ bedtools --version
     bedtools v2.30.0
 
-Now, with ``bedtools`` available within your environment
+Now, with ``bedtools`` available within your environment, you can install ``mumerge`` as follows.
+
 Via ``pip``
 -----------
 The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
 
-From PyPI:
+From PyPI (recommended):
 ::
 
     $ python -m pip install mumerge
