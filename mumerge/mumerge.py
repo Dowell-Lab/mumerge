@@ -294,7 +294,7 @@ def inputs_processor():
                 
                 # Run bedtools sort + merge
                 system(" ".join([cat, sort, merge, out]))
-
+                
     else:
         raise TypeError("Please specify input file with '-i' flag. "
                         "For more details run mumerge with the '-H' flag.")
