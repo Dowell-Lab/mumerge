@@ -93,6 +93,14 @@ def normalizer(values, scaler=1, integral=False):
     return scaled_values
 
 
+def is_executable(program):
+    '''
+    This function checks whether <program> is executable by the system
+    '''
+    from shutil import which
+    return which(program) != None
+
+
 ###############################################################################
 # This function processes the initial inputs by arg parsing, defining variables
 # and then generating the merged bedfile from the inputted sample bedfiles.
@@ -262,22 +270,30 @@ def inputs_processor():
                 # User defined bedfile
                 union_bedfile = args.merged
             else:
-                # Generate merged bed file using bedtools binary
-                srcdir = Path(__file__).absolute().parent
-
+                ## Generate merged bed file using bedtools binary
                 union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
-                bedtools = "".join([str(srcdir), "/bin/bedtools"])
+
+                # Check platform OS to choose correct bedtools binary
+#                srcdir = Path(__file__).absolute().parent
+#                if sys.platform.lower() == 'linux':
+#                    bedtools = "".join([str(srcdir), "/bin/bedtools"])
+#                elif sys.platform.lower() == 'darwin':
+#                    bedtools = "".join([str(srcdir), "/bin/bedtools_macos"])
+#                else:
+#                    raise OSError("Platform must be Linux, MacOS, or WSL.")
+
+#                cat = "cat " + " ".join(bedfiles)
+#                sort = " ".join(["|", bedtools, "sort -i stdin"])
+#                merge = " ".join(["|", bedtools, "merge -i stdin"])
+#                out = " ".join([">", union_bedfile])
 
                 cat = "cat " + " ".join(bedfiles)
-                sort = " ".join(["|", bedtools, "sort -i stdin"])
-                merge = " ".join(["|", bedtools, "merge -i stdin"])
+                sort = "| bedtools sort -i stdin"
+                merge = "| bedtools merge -i stdin"
                 out = " ".join([">", union_bedfile])
-
+                
+                # Run bedtools sort + merge
                 system(" ".join([cat, sort, merge, out]))
-
-#                os.system("cat " + " ".join(bedfiles)
-#                    + " | bedtools sort -i stdin | bedtools merge -i stdin > "
-#                    + union_bedfile)
 
     else:
         raise TypeError("Please specify input file with '-i' flag. "
@@ -859,6 +875,18 @@ def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
 def main():
     # Start timing
     start = time()
+
+    # Check if 'bedtools' exists on the system
+    if is_executable('bedtools'):
+        pass
+    else:
+        error_text = (
+            "Bedtools is not available on your system. Please install it in "
+            "your environment and include it in your PATH. For details see: \n"
+            "https://bedtools.readthedocs.io/en/latest/content/installation"
+            ".html"
+        )
+        raise EnvironmentError(error_text)
 
     ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
     inputs = inputs_processor()  
