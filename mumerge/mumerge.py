@@ -7,7 +7,7 @@ __author__ = 'Jacob T. Stanley'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
 __license__ = 'MIT'
-__version__ = '0.0.3'
+__version__ = '0.0.7'
 
 # Imports =====================================================================
 import sys
