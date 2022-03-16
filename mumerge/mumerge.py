@@ -946,7 +946,7 @@ def main():
                                 print_header=False,
                                 count=False)
     if verbose:
-        sys.stdout.write("Building Tfit-regions dictionary...\n")
+        sys.stdout.write("Building bed-regions dictionary...\n")
     ## Generate tfit dictionary, of form 
     # {'chr#': {(reg_start,reg_stop): [(mu_start,mu_stop,cov,'sampID'), ...]}}
     tfit_dict = mu_dict_generator(list(tfit_filenames),

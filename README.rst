@@ -62,11 +62,6 @@ Bedtools
 --------
 muMerge relies on ``bedtools`` in order to group together those bed regions from the input bed files that will be combined by muMerge probabilistically. This grouping is done using the ``bedtools merge`` command. A ``bedtools`` binary is included as a part of the package, located at ``/mumerge/bin/bedtools``.
 
-Running demo
-============
-
-To demonstrate the functionality of muMerge a simple example including bedfiles and an input file are included in the package.
-
 Usage
 =====
 
@@ -124,21 +119,25 @@ The ``<INPUT>`` file is a tab delimited text file that contains paths to BED fil
 You can find this information using the ``-H`` flag---i.e. running ``mumerge -H``, which will return the following:
 ::
 
-    Input file containing bedfiles, sample ID's, and replicate groupings. Input
-    file (indicated by the '-i' flag) should be of the following (tab delimited)
-    format:
-
-    #file   sampid  group
-    /full/file/path/filename1.bed   sampid1 A
-    /full/file/path/filename2.bed   sampid2 B
-    ...
-
-    Header line indicated by '#' character must be included and fields must
-    follow the same order as non-header lines. The order of subsequent lines does
-    matter. 'group' identifiers should group files that are technical/biological
-    replicates. Different experimental conditions should recieve different 'group'
-    identifiers. The 'group' identifier can be of type 'int' or 'str'. If 'sampid'
-    is not specified, then default sample ID's will be used.
+	INPUT FILE
+	----------
+	Input file containing bedfiles, sample ID's, and replicate groupings. Input
+	file (indicated by the '-i' flag) should be of the following (tab delimited)
+	format:
+	
+	#file   sampid  group
+	/full/path/file1.bed    sampid1 A
+	/full/path/file2.bed    sampid2 B
+	...
+	
+	Header line indicated by '#' character must be included and fields must
+	follow the same order as non-header lines. The order of subsequent lines does
+	not matter. File paths should be full paths to bed files, however you can
+	also specify paths that are relative to the input file location. 'group'
+	identifiers should group files that are technical/biological replicates.
+	Different experimental conditions should recieve different 'group' identifiers.
+	The 'group' identifier can be of type 'int' or 'str'. If 'sampid' is not
+	specified, then default sample ID's will be used.
 
 Output files
 ------------
@@ -146,7 +145,33 @@ muMerge returns the merged regions in BED file format (``project_id_MUMERGE.bed`
 
 Demo
 ----
-The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them.
+The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them. The demo consists of an input mumerge file which references two short bedfiles (``a.bed`` and ``b.bed``) that are located in the same directory. Running the demo:
+
+::
+
+    $ mumerge -v -i <fullpath>/mumerge_demo.input -o ./demo_out
+
+will return the following to stdout:
+
+::
+
+    Generating 'bedtools merge' bedfile...
+    Building bed-regions dictionary...
+    # Sample_ID      Filename
+    # sampA          <fullpath>/a.bed
+    # sampB          <fullpath>/b.bed
+    Processed 2 of 2 regions
+
+and will produce the following files:
+
+::
+
+    ./demo_out.log
+    ./demo_out_BEDTOOLS_MERGE.bed
+    ./demo_out_MISCALLS.bed
+    ./demo_out_MUMERGE.bed
+
+If run correctly, ``demo_out_MUMERGE.bed`` should have two bed lines (``chr1    150     350`` and ``chr1    600     900``), ``demo_out_MISCALLS.bed`` should be empty, and ``demo_out.log`` should contain meta information about the run.
 
 Runtime
 -------
