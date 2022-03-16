@@ -60,7 +60,7 @@ NumPy will be installed automatically when using ``pip`` to install ``mumerge``.
 
 Bedtools
 --------
-muMerge relies on ``bedtools`` in order to group together those bed regions from the input bed files that will be combined by muMerge probabilistically. This grouping is done using the ``bedtools merge`` command. A ``bedtools`` binary is included as a part of the package, located at ``/mumerge/bin/bedtools``.
+muMerge relies on ``bedtools`` in order to group together those bed regions from the input bed files that will be combined probabilistically by muMerge. This grouping is done using the ``bedtools merge`` command, which must be available at the command line.
 
 Usage
 =====
@@ -119,25 +119,25 @@ The ``<INPUT>`` file is a tab delimited text file that contains paths to BED fil
 You can find this information using the ``-H`` flag---i.e. running ``mumerge -H``, which will return the following:
 ::
 
-	INPUT FILE
-	----------
-	Input file containing bedfiles, sample ID's, and replicate groupings. Input
-	file (indicated by the '-i' flag) should be of the following (tab delimited)
-	format:
-	
-	#file   sampid  group
-	/full/path/file1.bed    sampid1 A
-	/full/path/file2.bed    sampid2 B
-	...
-	
-	Header line indicated by '#' character must be included and fields must
-	follow the same order as non-header lines. The order of subsequent lines does
-	not matter. File paths should be full paths to bed files, however you can
-	also specify paths that are relative to the input file location. 'group'
-	identifiers should group files that are technical/biological replicates.
-	Different experimental conditions should recieve different 'group' identifiers.
-	The 'group' identifier can be of type 'int' or 'str'. If 'sampid' is not
-	specified, then default sample ID's will be used.
+    INPUT FILE
+    ----------
+    Input file containing bedfiles, sample ID's, and replicate groupings. Input
+    file (indicated by the '-i' flag) should be of the following (tab delimited)
+    format:
+    
+    #file   sampid  group
+    /full/path/file1.bed    sampid1 A
+    /full/path/file2.bed    sampid2 B
+    ...
+    
+    Header line indicated by '#' character must be included and fields must
+    follow the same order as non-header lines. The order of subsequent lines does
+    not matter. File paths should be full paths to bed files, however you can
+    also specify paths that are relative to the input file location. 'group'
+    identifiers should group files that are technical/biological replicates.
+    Different experimental conditions should recieve different 'group' identifiers.
+    The 'group' identifier can be of type 'int' or 'str'. If 'sampid' is not
+    specified, then default sample ID's will be used.
 
 Output files
 ------------
@@ -145,7 +145,7 @@ muMerge returns the merged regions in BED file format (``project_id_MUMERGE.bed`
 
 Demo
 ----
-The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them. The demo consists of an input mumerge file which references two short bedfiles (``a.bed`` and ``b.bed``) that are located in the same directory. Running the demo (replace ``<fullpath>`` with the path to the input file which depends on where you installed it):
+The additional help menu (``mumerge -H``) also contains information on a muMerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them. The demo consists of an input muMerge file which references two short bedfiles (``a.bed`` and ``b.bed``) that are located in the same directory. Running the demo (replace ``<fullpath>`` with the path to the input file which depends on where you installed it):
 
 ::
 
@@ -173,14 +173,21 @@ and will produce the following files:
 
 If run correctly, ``demo_out_MUMERGE.bed`` should have two bed lines (``chr1    150     350`` and ``chr1    600     900``), ``demo_out_MISCALLS.bed`` should be empty, and ``demo_out.log`` should contain meta information about the run.
 
+Platforms
+---------
+
+* Linux
+* macOS
+* Windows Subsystem for Linux (WSL)
+
 Runtime
 -------
-The overall run time depends on the the number for input BED files and regions being merged. A test case, where 8 samples (~30,000 regions) with 6 condition groups were merged, took about 12 minutes on a MacBook Pro iCore i9 2.3 GHz running macOS v 10.14.6.
+The overall run time depends on the the number of input BED files and regions being merged. A test case, where 8 samples (~30,000 regions) with 6 condition groups were merged, took about 12 minutes on a MacBook Pro iCore i9 2.3 GHz running macOS v 10.14.6.
 
 Cite
 ====
 
-Please cite the following article if you use muMerge: `Transcription factor enrichment analysis (TFEA) quantifies the activity of multiple transcription factors from a single experiment <https://doi.org/10.1038/s42003-021-02153-7>`
+Please cite the following article if you use muMerge: `Transcription factor enrichment analysis (TFEA) quantifies the activity of multiple transcription factors from a single experiment <https://doi.org/10.1038/s42003-021-02153-7>`_
 
 BibTeX citation:
 
