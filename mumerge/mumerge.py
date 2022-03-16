@@ -11,7 +11,6 @@ __version__ = '0.0.3'
 
 # Imports =====================================================================
 import sys
-#sys.path.append('C:\\Users\\Jacob\\Dropbox\\0DOWELL\\muMerge\\mumerge\\')
 import argparse
 import numpy as np
 from os import system
@@ -93,7 +92,7 @@ def normalizer(values, scaler=1, integral=False):
     return scaled_values
 
 
-def is_executable(program):
+def is_executable(program: str) -> bool:
     '''
     This function checks whether <program> is executable by the system
     '''
@@ -126,19 +125,21 @@ def inputs_processor():
         "replicate groupings. Input\nfile (indicated by the '-i' flag) "
         "should be of the following (tab delimited)\nformat:\n\n"
         "#file\tsampid\tgroup\n"
-        "/full/file/path/filename1.bed\tsampid1\tA\n"
-        "/full/file/path/filename2.bed\tsampid2\tB\n"
+        "/full/path/file1.bed\tsampid1\tA\n"
+        "/full/path/file2.bed\tsampid2\tB\n"
         "...\n\n")
     input_details = ("Header line indicated by '#' character must be included "
         "and fields must\nfollow the same order as non-header lines. The "
-        "order of subsequent lines does\nmatter. 'group' identifiers should "
-        "group files that are technical/biological\nreplicates. Different "
-        "experimental conditions should recieve different 'group'\n"
-        "identifiers. The 'group' identifier can be of type 'int' or 'str'. "
-        "If 'sampid'\nis not specified, then default sample ID's will be "
+        "order of subsequent lines does \nnot matter. File paths should be "
+        "full paths to bed files, however you can \nalso specify paths that "
+        "are relative to the input file location. 'group' \nidentifiers "
+        "should group files that are technical/biological replicates. "
+        "\nDifferent experimental conditions should recieve different 'group' "
+        "identifiers. \nThe 'group' identifier can be of type 'int' or 'str'. "
+        "If 'sampid' is not \nspecified, then default sample ID's will be "
         "used.\n")
     demo_dir = "".join([str(Path(__file__).absolute().parent), "/demo/"])
-    demo_details = ("\nDEMO\n----\nmuMerge demo files directory:"
+    demo_details = ("\n\nDEMO\n----\nmuMerge demo files directory:"
         f"\n{demo_dir}\n\n"
         "This directory contains two example bed files (a.bed and b.bed) as "
         "well as an \nexample input file (mumerge_demo.input) that will "
@@ -262,6 +263,18 @@ def inputs_processor():
             
             # Assign bedfiles and sampids (input must have 3 columns)
             bedfiles, sampids, groups = zip(*samples)
+            
+            # Check and adjust paths to bedfiles (relative and absolute)
+            input_file_path = Path(args.input).absolute().parent
+            bedfile_paths = [Path(b) for b in bedfiles]
+            bedfile_paths = [
+                input_file_path.joinpath(p) if not p.is_absolute() 
+                else p for p in bedfile_paths
+            ]
+            file_check = all(bedfile.exists() for bedfile in bedfile_paths)
+            assert file_check, "One or more of your input bedfiles don't exist"
+            # Convert back to strings
+            bedfile_paths = [str(p) for p in bedfile_paths]
 
             # Pull set of groups and initialize list to contain group structure
             groups = sorted(set(groups))
@@ -283,21 +296,7 @@ def inputs_processor():
                 ## Generate merged bed file using bedtools binary
                 union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
 
-                # Check platform OS to choose correct bedtools binary
-#                srcdir = Path(__file__).absolute().parent
-#                if sys.platform.lower() == 'linux':
-#                    bedtools = "".join([str(srcdir), "/bin/bedtools"])
-#                elif sys.platform.lower() == 'darwin':
-#                    bedtools = "".join([str(srcdir), "/bin/bedtools_macos"])
-#                else:
-#                    raise OSError("Platform must be Linux, MacOS, or WSL.")
-
-#                cat = "cat " + " ".join(bedfiles)
-#                sort = " ".join(["|", bedtools, "sort -i stdin"])
-#                merge = " ".join(["|", bedtools, "merge -i stdin"])
-#                out = " ".join([">", union_bedfile])
-
-                cat = "cat " + " ".join(bedfiles)
+                cat = "cat " + " ".join(bedfile_paths)
                 sort = "| bedtools sort -i stdin"
                 merge = "| bedtools merge -i stdin"
                 out = " ".join([">", union_bedfile])
@@ -310,7 +309,7 @@ def inputs_processor():
                         "For more details run mumerge with the '-H' flag.")
 
     # Assign the parsed+processed args to the output dict
-    outdict['bedfiles'] = bedfiles
+    outdict['bedfiles'] = bedfile_paths
     outdict['sampids'] = sampids
     outdict['groupings'] = grouped_samps
     outdict['merged'] = union_bedfile
@@ -352,7 +351,7 @@ def log_initializer(
         logfile.write("{} \t {}\n".format(sampids[i], f_path.absolute()))
 
     input_path = Path(input_file)
-    logfile.write("\ninput file: {}\n".format(input_path.absolute()))
+    logfile.write("\ninput file: {}\n\n".format(input_path.absolute()))
     out_basename_path = Path(output_basename)
     logfile.write("output path: {}\n".format(out_basename_path.absolute()))
     logfile.write("'bedtools merge' bedfile: {}\n".format(union_bedfile))
