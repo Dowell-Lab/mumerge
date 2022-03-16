@@ -145,7 +145,7 @@ muMerge returns the merged regions in BED file format (``project_id_MUMERGE.bed`
 
 Demo
 ----
-The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them. The demo consists of an input mumerge file which references two short bedfiles (``a.bed`` and ``b.bed``) that are located in the same directory. Running the demo:
+The additional help menu (``mumerge -H``) also contains information on a mumerge demo included with the package. The menu will specify where the demo files are located (install location depends on the platform) and how to run them. The demo consists of an input mumerge file which references two short bedfiles (``a.bed`` and ``b.bed``) that are located in the same directory. Running the demo (replace ``<fullpath>`` with the path to the input file which depends on where you installed it):
 
 ::
 
