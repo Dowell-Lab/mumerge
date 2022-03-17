@@ -149,6 +149,9 @@ def inputs_processor():
         "directory:\n\nOUTPUT FILES:\n"
         "./demo_out.log\n./demo_out_BEDTOOLS_MERGE.bed\n"
         "./demo_out_MISCALLS.bed\n./demo_out_MUMERGE.bed\n")
+    version_details=(f"muMerge version: {__version__}\n"
+        f"source: {__file__}\n")
+        
     # This dictionary stories all the parsed and processed args
     outdict = {
         'input': None,
@@ -168,7 +171,13 @@ def inputs_processor():
         formatter_class=argparse.RawTextHelpFormatter
     )
 
-    # ADDITIONAL HELP TEXT FLAG
+    # VERSION FLAG (ExCLUSIVE)
+    parser.add_argument(
+        '-V', '--version',
+        action='store_true',
+        help='Version info'
+    )
+    # ADDITIONAL HELP TEXT FLAG (EXCLUSIVE)
     parser.add_argument(
         '-H', '--HELP',
         action='store_true', 
@@ -206,13 +215,13 @@ def inputs_processor():
             "to combine the sample bedfiles. If not specified, mumerge will "
             "\ngenerate one directly from the sample bedfiles.")
     )
-    # VERBOSE TOGGLE (OPTIONAL)
+    # SINGLETONS FLAG (OPTIONAL)
     parser.add_argument(
         '-r', '--remove_singletons',
         action='store_true',
         help="Remove calls not present in more than 1 sample"
     )
-
+    # VERBOSE FLAG (OPTIONAL)
     parser.add_argument(
         '-v', '--verbose',
         action='store_true',
@@ -221,10 +230,15 @@ def inputs_processor():
 
     args = parser.parse_args()
     
+    # If -V is specified, print out version text and exit
+    if args.version:
+        print(version_info)
+        sys.exit(0)
+
     # If -H is specified, print out additional help text and exit
     if args.HELP:
         print(input_format +  input_details + demo_details)
-        sys.exit()
+        sys.exit(0)
 
     if args.verbose:
         outdict['verbose'] = True
