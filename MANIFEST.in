@@ -1,0 +1,5 @@
+# Contains all ancillary files to be included in the package
+#include <package_name>/path/to/file
+#include <package_name>/path/*.fileextenion
+#include mumerge/bin/bedtools
+include mumerge/demo/*
