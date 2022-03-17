@@ -7,7 +7,7 @@ __author__ = 'Jacob T. Stanley'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
 __license__ = 'MIT'
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 
 # Imports =====================================================================
 import sys
@@ -149,7 +149,7 @@ def inputs_processor():
         "directory:\n\nOUTPUT FILES:\n"
         "./demo_out.log\n./demo_out_BEDTOOLS_MERGE.bed\n"
         "./demo_out_MISCALLS.bed\n./demo_out_MUMERGE.bed\n")
-    version_details=(f"muMerge version: {__version__}\n"
+    version_info=(f"version: {__version__}\n"
         f"source: {__file__}\n")
         
     # This dictionary stories all the parsed and processed args
