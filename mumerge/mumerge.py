@@ -6,8 +6,8 @@ usage: mumerge [-h | -H] [-i INPUT] [-o OUTPUT] [-w WIDTH] [-m MERGE] [-r] [-v]
 __author__ = 'Jacob T. Stanley'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
-__license__ = 'MIT'
-__version__ = '0.0.8'
+__license__ = 'GPL v3.0'
+__version__ = '1.0.0'
 
 # Imports =====================================================================
 import sys
@@ -357,6 +357,7 @@ def log_initializer(
 
     logfile.write("Running: {}\n".format(sys.argv[0]))
     logfile.write("Python:\n{}\n".format(sys.version))
+    logfile.write(f"muMerge: v{__version__}\n")
     logfile.write("Hostname: {}\n".format(gethostname()))
     logfile.write("\n# Sample_ID \t Filename\n")
 

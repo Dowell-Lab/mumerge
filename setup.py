@@ -42,7 +42,7 @@ setup(
     long_description_content_type='text/x-rst',
     author="Jacob T. Stanley",
     author_email='jacob.stanley@colorado.edu',
-    url='https://github.com/jtstanley/mumerge',
+    url='https://github.com/Dowell-Lab/mumerge',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
@@ -60,9 +60,9 @@ setup(
         ]
     },
     install_requires=requirements,
-    license="BSD (3-clause)",
+    license="GPL v3.0",
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
     ],
