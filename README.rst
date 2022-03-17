@@ -20,7 +20,7 @@ To confirm installation, check the ``bedtools`` version:
     (mumerge_env) $ bedtools --version
     bedtools v2.30.0
 
-Now, with ``bedtools`` available within your environment,oyou can install ``mumerge`` as follows.
+Now, with ``bedtools`` available within your environment you can install ``mumerge`` as follows.
 
 Via ``pip``
 -----------
