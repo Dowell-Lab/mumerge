@@ -10,7 +10,7 @@ Installation
 It is recommended to install ``mumerge`` using a virtual environment or package manager---e.g. ``venv`` or ``conda``. Specifically, because ``bedtools`` must be available at the command line we recommend you create a new environment with ``conda`` and install ``bedtools`` from bioconda, as follows:
 ::
 
-    (base) $ conda create -n mumerge_env
+    (base) $ conda create -n mumerge_env python=3.9
     (base) $ conda activate mumerge_env
     (mumerge_env) $ conda install -c bioconda bedtools
 
@@ -20,11 +20,11 @@ To confirm installation, check the ``bedtools`` version:
     (mumerge_env) $ bedtools --version
     bedtools v2.30.0
 
-Now, with ``bedtools`` available within your environment, you can install ``mumerge`` as follows.
+Now, with ``bedtools`` available within your environment,oyou can install ``mumerge`` as follows.
 
 Via ``pip``
 -----------
-The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
+The simplest way of installing ``mumerge`` within your virtual environment is using ``pip``. Check that ``pip`` is installed in your virtual environment and if not install it (e.g. ``conda install pip``). Also, be sure to use the appropriate version of Python if you have multiple versions installed. ``mumerge`` can then be installed with one of the following commands. 
 
 From PyPI (recommended):
 ::
