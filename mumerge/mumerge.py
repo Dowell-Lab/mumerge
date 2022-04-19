@@ -833,22 +833,24 @@ def sigma_assigner(new_mu, old_mu_sig):
 
 
 ###############################################################################
-## This function resolves collisions between newly calculated bed intervals 
-# (i.e. the new mu-sig). If two overlap, then the intervals are shrunk to 
-# where the intervals touch.
 def collision_resolver(mu_sig_list, chromosome, log=None):
     '''
-    Takes input list of (mu, sig, ...) tuples and evaluates if any of them are 
-    overlapping. In the event they do, they are shrunk to the point that they 
-    just touch. This is done in a L-to-R parse (so a doubly-overlapping region 
-    may not end up directly adjacent to its lefthand neighbor). Scaling is 
-    performed based on the relative lenghs of the two neighboring bed regions. 
-    This function also checks if any bed regions have negative coordinates and 
-    then adjusts their size so they start at bp = 0.
+    Takes input list of [(mu, sig, ...), ... ] tuples and evaluates if any of 
+    them are overlapping. In the event they do, they are shrunk to the point 
+    that they just touch. This is done in a L-to-R parse (so a 
+    doubly-overlapping region may not end up directly adjacent to its lefthand 
+    neighbor). Scaling is performed based on the relative lenghs of the two 
+    neighboring bed regions. This function also checks if any bed regions have 
+    negative coordinates and then adjusts their size so they start at bp = 0.
     '''
-    # Make sure mu_sig_list is sorted by mu position: [(mu, sig, ...), ...]
+    # Make sure mu_sig_list is sorted by mu position: [(mu, sig, ...), ... ]
     mus = sorted(mu_sig_list, key=lambda x: x[0])
 
+    # no collisions possible if there is only one mu in the list
+    if len(mus) <= 1:
+        return mus
+
+    # sliding window through list of sorted mus
     for i, mu in enumerate(mus[:-1]):
 
         pos1 = mus[i][0]
@@ -857,10 +859,12 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
         sig2 = mus[i+1][1]
 
         # Determine if mu_i and mu_i+1 overlap with one another
-        if overlap_check((pos1-sig1, pos1+sig1), (pos2-sig2, pos2+sig2)):
+        region1 = (pos1-sig1, pos1+sig1)
+        region2 = (pos2-sig2, pos2+sig2)
+        if overlap_check(region1, region2):
             
             if log:
-                log.write(f"{chromosome}\t{mu[i]}/{mu[i+1]}\tcollision\n")
+                log.write(f"{chromosome}\t{region1}/{region2}\tcollision\n")
 
             # Calculate distance and ratio of length between adjacent mu
             len_ratio = sig1 / (sig1 + sig2)
@@ -876,12 +880,12 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
             pass
         
         # Determine if mu_i has negative coordinates (region near start of chr)
-        left_edge = mus[i][0] - mus[i][1]
+        left_edge = region1[0]
 
         if left_edge < 0:
 
             if log:
-                log.write(f"{chromosome}\t{mu[i]}\tnegative\n")
+                log.write(f"{chromosome}\t{region1}\tnegative\n")
 
             new_sig = mus[i][1] + left_edge
             # reassign mu_i
