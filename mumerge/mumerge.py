@@ -50,14 +50,21 @@ def overlap_check(a, b):
         return False
 
 
-def chromesome_list():
+def chromosome_list(bed_regions=None):
     '''
-    Returns a list of chromesome strings. This just helps standardize the list 
-    across various functions.
+    Returns a list of sorted chromosome strings. The list is sourced from a 
+    list of bed region tuples [('chr#', start, stop), ... ]. If no regions are 
+    provided the default human chromosomes are returned.
     '''
-    chromesome_list = [i for i in range(1,23)] + ["X", "Y"]
-    chromesome_list = ["chr" + str(i) for i in chromesome_list]
-    return chromesome_list
+    if bed_regions != None:
+        chr_list = [str(region[0]) for region in bed_regions]
+        chr_list = list(np.unique(np.array(chr_list)))
+
+    else:
+        chr_list = [i for i in range(1,23)] + ["X", "Y"]
+        chr_list = ["chr" + str(i) for i in chr_list]
+    
+    return chr_list
 
 
 def closest_idx(val, loc_list):
@@ -405,10 +412,10 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
                 line = f.readline().strip('\n')
             line = line.split('\t')
 
-            chromesome = line[0]
+            chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
-            bed_list.append((chromesome, start, stop))
+            bed_list.append((chromosome, start, stop))
 
             # Loop over all the lines in bed file and add to list
             for line in f:
@@ -416,12 +423,13 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
                 # Read and split non-header lines. Lines should be of the form 
                 # "chr#  start  stop  [cov  [parameters]]"
                 line = line.strip('\n').split('\t')
-                chromesome = line[0]
+                chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
-                bed_list.append((chromesome, start, stop))
+                bed_list.append((chromosome, start, stop))
                 counter = counter + 1
 
+    # Return format: [('chr#', start, stop, [...]), ... ]
     if count == True:
         print("Number of regions: ", counter)
         return bed_list, counter
@@ -434,7 +442,7 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
 ###############################################################################
 # This function initializes the tfit dictionary
 def tfit_dict_initializer(interest_regions, 
-                          chromesome_flag=True,
+                          chromosome_flag=True,
                           bed_region_flag=True):
     '''
     Initializes a dictionary to store grouped tfit calls. Currently only has 
@@ -443,17 +451,22 @@ def tfit_dict_initializer(interest_regions,
     '''
     tfit_dict = defaultdict(dict)
 
-    if chromesome_flag == True:
-        for chromesome in chromesome_list():
-            tfit_dict[chromesome] = {}
-
-    if (chromesome_flag == True and bed_region_flag == True):
+    if chromosome_flag and bed_region_flag:
         for region in interest_regions:
-            chromesome = region[0]
+            chromosome = region[0]
             start = int(region[1])
             stop = int(region[2])
+            
+            tfit_dict[chromosome][(start, stop)] = []
+    
+    elif chromosome_flag and not bed_region_flag:
+        for chromosome in chromosome_list(bed_regions=interest_regions):
+            tfit_dict[chromosome] = {}
 
-            tfit_dict[chromesome][(start, stop)] = []             
+    else:
+        for chromosome in chromosome_list():
+            tfit_dict[chromosome] = {}
+
     return tfit_dict
 
 
@@ -478,18 +491,18 @@ def tfit_file_reader(filename, sampid, tfit_dict):
 
             # First non-header line
             line = line.split('\t')
-            chromesome = line[0]
+            chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
             coverage = 0
 
             try:
                 region_key = next(
-                    key for key in tfit_dict[chromesome].keys()
+                    key for key in tfit_dict[chromosome].keys()
                     if start >= int(key[0]) and stop <= int(key[1])
                     )
                 val = tuple([start, stop, coverage, sampid])
-                tfit_dict[chromesome][region_key].append(val)
+                tfit_dict[chromosome][region_key].append(val)
             except Exception:
                 print("No region found...")     # CHANGE THIS!!!
 
@@ -500,7 +513,7 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 # Read and split non-header lines. Lines should be of the form 
                 # "chr#  start  stop  [parameters]"
                 line = line.strip('\n').split('\t')
-                chromesome = line[0]
+                chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
                 coverage = 0
@@ -509,11 +522,11 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 # line lands
                 try:
                     region_key = next(
-                        key for key in tfit_dict[chromesome].keys()
+                        key for key in tfit_dict[chromosome].keys()
                         if start >= int(key[0]) and stop <= int(key[1])
                         )
                     val = tuple([start, stop, coverage, sampid])
-                    tfit_dict[chromesome][region_key].append(val)
+                    tfit_dict[chromosome][region_key].append(val)
                 except StopIteration:
                     continue
     return tfit_dict
@@ -773,7 +786,7 @@ def maxima_loc(samp_list, shift=0):
 def mu_sig_extract(mu_list, width=1.0):
     '''
     This funciton just pulls the mu and sigma values out of the tfit_dict for
-    a given chromesome and bed region. Returns tuples in list of form
+    a given chromosome and bed region. Returns tuples in list of form
     [(mu_1, sig_1), (mu_2, sig_2), ...].
     '''
     starts, stops, cov, samples = zip(*mu_list)
