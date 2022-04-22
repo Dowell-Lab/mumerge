@@ -170,6 +170,7 @@ def inputs_processor():
         'weights': None,
         'verbose': False,
         'remove_singletons': False,
+        'save_sampids': False,
         'width_ratio': None
     }
 
@@ -211,7 +212,7 @@ def inputs_processor():
             "distribution to the bed region (half-width) --- sigma:half-bed "
             "\n(default: 1.0). The choice for this parameter will depend on "
             "the \ndata type as well as how bed regions were inferred from "
-            "the \nexpression data."),
+            "the \nexpression data. Units: [bed] = [sig] / [width ratio]"),
         default=1.0
     )
     # PRECOMPILED MERGE BEDFILE (OPTIONAL)
@@ -227,6 +228,14 @@ def inputs_processor():
         '-r', '--remove_singletons',
         action='store_true',
         help="Remove calls not present in more than 1 sample"
+    )
+    # SAMPID OUTPUT FLAG (OPTIONAL)
+    parser.add_argument(
+        '-s', '--save_sampids',
+        action='store_true',
+        help="Include the IDs of those samples that contribute to the output "
+            "region. These are included in the fourth column of the output "
+            "file as a comma separated list."
     )
     # VERBOSE FLAG (OPTIONAL)
     parser.add_argument(
@@ -253,6 +262,9 @@ def inputs_processor():
     if args.remove_singletons:
         outdict['remove_singletons'] = True
     
+    if args.save_sampids:
+        outdict['save_sampids'] = True
+
     if not args.output:
         raise TypeError("Please specify output filename with '-o' flag. "
                         "Shound include fullpath + basename for outputs. "
@@ -921,18 +933,28 @@ def collision_resolver(mu_sig_list, chromosome, width=1.0, log=None):
 ## This function defines the boundaries of the bed region, using the updated
 # sigmas (from sigma_assigner()) and outputs a list of strings formatted as 
 # bedfile regions.
-def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
+def bed_line_formatter(chromosome, mu_sig_list, width=1.0, sampids=None):
     '''
     Takes input list of new (mu, sigma, ...) tuples and outputs list of 
-    strings formatted as bedfile lines.
+    strings formatted as bedfile lines. The sampids kwarg is used to print a 
+    list of sample IDs to the fourth column of the output bed file.
     '''
     bed_lines = []
-    for mu in mu_sig_list:
-        start = str(round(mu[0] - mu[1]/width))
-        stop = str(round(mu[0] + mu[1]/width))
-        bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
-#        avg = str(round((int(start) + int(stop)) / 2))
-#        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
+
+    if sampids != None:
+        sampids = ",".join(sampids)
+
+        for mu in mu_sig_list:
+            start = str(round(mu[0] - mu[1]/width))
+            stop = str(round(mu[0] + mu[1]/width))
+            bed_lines.append("\t".join([chromosome, start, stop, sampids]) 
+                + "\n")
+
+    else:
+        for mu in mu_sig_list:
+            start = str(round(mu[0] - mu[1]/width))
+            stop = str(round(mu[0] + mu[1]/width))
+            bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
 
     return bed_lines
 
@@ -968,6 +990,7 @@ def main():
     weights = inputs['weights']
     width_ratio = inputs['width_ratio']
     remove_singletons = inputs['remove_singletons']
+    save_sampids = inputs['save_sampids']
 
     num_samps = len(tfit_filenames)
 
@@ -1047,7 +1070,7 @@ def main():
 
                 # Select Tfit calls for one region
                 mu_list = tfit_dict[chromosome][region]
-    #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
+
                 if call_remover(mu_list,remove_singletons):
                     # Write the singletons to a new output file
                     singletonfile.write("\n")
@@ -1102,11 +1125,19 @@ def main():
                     log=miscallfile
                 )     #CHECK!!!
 
+                # Generate list of sample IDs for contributing samples
+                if save_sampids:
+                    sampid_set = set([str(i[3]) for i in mu_list])
+                    out_sampids = sorted(list(sampid_set))
+                else:
+                    out_sampids = None
+
                 # Convert final (mu, sig) to bed line format, write to output
                 bedlines = bed_line_formatter(
                     chromosome, 
                     final_mu_sig, 
-                    width=width_ratio
+                    width=width_ratio,
+                    sampids=out_sampids
                 )
                 
                 # Write updated bedlines to output file
