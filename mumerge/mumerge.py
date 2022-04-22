@@ -209,7 +209,7 @@ def inputs_processor():
         type=float,
         help=("The ratio of a the sigma for the corresponding probabilty \n"
             "distribution to the bed region (half-width) --- sigma:half-bed "
-            "\n(default: 1). The choice for this parameter will depend on "
+            "\n(default: 1.0). The choice for this parameter will depend on "
             "the \ndata type as well as how bed regions were inferred from "
             "the \nexpression data."),
         default=1.0
@@ -851,7 +851,7 @@ def sigma_assigner(new_mu, old_mu_sig):
 
 
 ###############################################################################
-def collision_resolver(mu_sig_list, chromosome, log=None):
+def collision_resolver(mu_sig_list, chromosome, width=1.0, log=None):
     '''
     Takes input list of [(mu, sig, ...), ... ] tuples and evaluates if any of 
     them are overlapping. In the event they do, they are shrunk to the point 
@@ -876,9 +876,10 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
         pos2 = mus[i+1][0]
         sig2 = mus[i+1][1]
 
-        # Determine if mu_i and mu_i+1 overlap with one another
-        region1 = (round(pos1-sig1), round(pos1+sig1))
-        region2 = (round(pos2-sig2), round(pos2+sig2))
+        # Determine if mu_i and mu_i+1 overlap with one another (accounting 
+        # for sigma:bed-length ratio)
+        region1 = (round(pos1 - sig1/width), round(pos1 + sig1/width))
+        region2 = (round(pos2 - sig2/width), round(pos2 + sig2/width))
         if overlap_check(region1, region2):
             
             if log:
@@ -888,9 +889,10 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
             len_ratio = sig1 / (sig1 + sig2)
             dist = pos2 - pos1
             
-            # Calculate new sigmas, and write them to mu list
-            delta1 = round(dist * len_ratio)
-            delta2 = round(dist * (1 - len_ratio))
+            # Calculate new sigmas, and write them to mu list (account for 
+            # sigma: bed-length ratio)
+            delta1 = dist * len_ratio * width
+            delta2 = dist * (1 - len_ratio) * width
             mus[i] = (pos1, delta1) + tuple(mus[i][2:])
             mus[i+1] = (pos2, delta2) + tuple(mus[i+1][2:])
 
@@ -905,7 +907,7 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
             if log:
                 log.write(f"{chromosome}\t{region1}\tnegative\n")
 
-            new_sig = mus[i][1] + left_edge
+            new_sig = (mus[i][1] + left_edge) * width
             # reassign mu_i
             mus[i] = (mus[i][0], new_sig, *mus[i][2:])
             
@@ -921,13 +923,13 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
 # bedfile regions.
 def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
     '''
-    Takes input list of new (mu, sigma) tuples and outputs list of strings 
-    formatted as bedfile lines.
+    Takes input list of new (mu, sigma, ...) tuples and outputs list of 
+    strings formatted as bedfile lines.
     '''
     bed_lines = []
     for mu in mu_sig_list:
-        start = str(round(mu[0] - mu[1] / width))
-        stop = str(round(mu[0] + mu[1] / width))
+        start = str(round(mu[0] - mu[1]/width))
+        stop = str(round(mu[0] + mu[1]/width))
         bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
 #        avg = str(round((int(start) + int(stop)) / 2))
 #        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
@@ -1096,6 +1098,7 @@ def main():
                 final_mu_sig = collision_resolver(
                     new_mu_sig, 
                     chromosome,
+                    width=width_ratio,
                     log=miscallfile
                 )     #CHECK!!!
 
