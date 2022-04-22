@@ -359,8 +359,10 @@ def log_initializer(
     files.
     '''
     # Write to miscall and log files
-    miscallfile.write("# This file contains regions which were identified not "
-                    "to contain a tfit call after merging. Hand check these.")
+    miscallfile.write("# This file contains regions which were either overlap "
+                    "with a neighboring region (i.e. a 'collision') or were "
+                    " identified not to contain a tfit call after merging. "
+                    "You may want to manually check these.")
 
     logfile.write("Running: {}\n".format(sys.argv[0]))
     logfile.write("Python:\n{}\n".format(sys.version))
@@ -456,7 +458,7 @@ def tfit_dict_initializer(interest_regions,
             chromosome = region[0]
             start = int(region[1])
             stop = int(region[2])
-            
+
             tfit_dict[chromosome][(start, stop)] = []
     
     elif chromosome_flag and not bed_region_flag:
@@ -529,6 +531,8 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                     tfit_dict[chromosome][region_key].append(val)
                 except StopIteration:
                     continue
+    
+    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
     return tfit_dict
 
 
@@ -596,6 +600,7 @@ def mu_dict_generator(tfit_filenames,
     for (sampid, file) in id_and_files:
         tfit_dict = tfit_file_reader(file, sampid, tfit_dict)
     
+    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
     return dict(tfit_dict)
 
 
@@ -872,8 +877,8 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
         sig2 = mus[i+1][1]
 
         # Determine if mu_i and mu_i+1 overlap with one another
-        region1 = (pos1-sig1, pos1+sig1)
-        region2 = (pos2-sig2, pos2+sig2)
+        region1 = (round(pos1-sig1), round(pos1+sig1))
+        region2 = (round(pos2-sig2), round(pos2+sig2))
         if overlap_check(region1, region2):
             
             if log:
