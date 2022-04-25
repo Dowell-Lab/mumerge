@@ -374,7 +374,7 @@ def log_initializer(
     miscallfile.write("# This file contains regions which were either overlap "
                     "with a neighboring region (i.e. a 'collision') or were "
                     " identified not to contain a tfit call after merging. "
-                    "You may want to manually check these.")
+                    "You may want to manually check these.\n")
 
     logfile.write("Running: {}\n".format(sys.argv[0]))
     logfile.write("Python:\n{}\n".format(sys.version))
@@ -520,6 +520,7 @@ def tfit_file_reader(filename, sampid, tfit_dict):
             except Exception:
                 print("No region found...")     # CHANGE THIS!!!
 
+            # After processing the first non-header line, we can now loop. 
             # Loop over all the lines in tfit file and compare the to regions 
             # in dict
             for line in f:
