@@ -50,14 +50,21 @@ def overlap_check(a, b):
         return False
 
 
-def chromesome_list():
+def chromosome_list(bed_regions=None):
     '''
-    Returns a list of chromesome strings. This just helps standardize the list 
-    across various functions.
+    Returns a list of sorted chromosome strings. The list is sourced from a 
+    list of bed region tuples [('chr#', start, stop), ... ]. If no regions are 
+    provided the default human chromosomes are returned.
     '''
-    chromesome_list = [i for i in range(1,23)] + ["X", "Y"]
-    chromesome_list = ["chr" + str(i) for i in chromesome_list]
-    return chromesome_list
+    if bed_regions != None:
+        chr_list = [str(region[0]) for region in bed_regions]
+        chr_list = list(np.unique(np.array(chr_list)))
+
+    else:
+        chr_list = [i for i in range(1,23)] + ["X", "Y"]
+        chr_list = ["chr" + str(i) for i in chr_list]
+    
+    return chr_list
 
 
 def closest_idx(val, loc_list):
@@ -163,6 +170,7 @@ def inputs_processor():
         'weights': None,
         'verbose': False,
         'remove_singletons': False,
+        'save_sampids': False,
         'width_ratio': None
     }
 
@@ -202,9 +210,9 @@ def inputs_processor():
         type=float,
         help=("The ratio of a the sigma for the corresponding probabilty \n"
             "distribution to the bed region (half-width) --- sigma:half-bed "
-            "\n(default: 1). The choice for this parameter will depend on "
+            "\n(default: 1.0). The choice for this parameter will depend on "
             "the \ndata type as well as how bed regions were inferred from "
-            "the \nexpression data."),
+            "the \nexpression data. Units: [bed] = [sig] / [width ratio]"),
         default=1.0
     )
     # PRECOMPILED MERGE BEDFILE (OPTIONAL)
@@ -220,6 +228,14 @@ def inputs_processor():
         '-r', '--remove_singletons',
         action='store_true',
         help="Remove calls not present in more than 1 sample"
+    )
+    # SAMPID OUTPUT FLAG (OPTIONAL)
+    parser.add_argument(
+        '-s', '--save_sampids',
+        action='store_true',
+        help="Include the IDs of those samples that contribute to the output "
+            "region. These are included in the fourth column of the output "
+            "file as a comma separated list."
     )
     # VERBOSE FLAG (OPTIONAL)
     parser.add_argument(
@@ -246,6 +262,9 @@ def inputs_processor():
     if args.remove_singletons:
         outdict['remove_singletons'] = True
     
+    if args.save_sampids:
+        outdict['save_sampids'] = True
+
     if not args.output:
         raise TypeError("Please specify output filename with '-o' flag. "
                         "Shound include fullpath + basename for outputs. "
@@ -352,8 +371,10 @@ def log_initializer(
     files.
     '''
     # Write to miscall and log files
-    miscallfile.write("# This file contains regions which were identified not "
-                    "to contain a tfit call after merging. Hand check these.")
+    miscallfile.write("# This file contains regions which were either overlap "
+                    "with a neighboring region (i.e. a 'collision') or were "
+                    " identified not to contain a tfit call after merging. "
+                    "You may want to manually check these.\n")
 
     logfile.write("Running: {}\n".format(sys.argv[0]))
     logfile.write("Python:\n{}\n".format(sys.version))
@@ -405,10 +426,10 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
                 line = f.readline().strip('\n')
             line = line.split('\t')
 
-            chromesome = line[0]
+            chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
-            bed_list.append((chromesome, start, stop))
+            bed_list.append((chromosome, start, stop))
 
             # Loop over all the lines in bed file and add to list
             for line in f:
@@ -416,12 +437,13 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
                 # Read and split non-header lines. Lines should be of the form 
                 # "chr#  start  stop  [cov  [parameters]]"
                 line = line.strip('\n').split('\t')
-                chromesome = line[0]
+                chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
-                bed_list.append((chromesome, start, stop))
+                bed_list.append((chromosome, start, stop))
                 counter = counter + 1
 
+    # Return format: [('chr#', start, stop, [...]), ... ]
     if count == True:
         print("Number of regions: ", counter)
         return bed_list, counter
@@ -434,7 +456,7 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
 ###############################################################################
 # This function initializes the tfit dictionary
 def tfit_dict_initializer(interest_regions, 
-                          chromesome_flag=True,
+                          chromosome_flag=True,
                           bed_region_flag=True):
     '''
     Initializes a dictionary to store grouped tfit calls. Currently only has 
@@ -443,17 +465,22 @@ def tfit_dict_initializer(interest_regions,
     '''
     tfit_dict = defaultdict(dict)
 
-    if chromesome_flag == True:
-        for chromesome in chromesome_list():
-            tfit_dict[chromesome] = {}
-
-    if (chromesome_flag == True and bed_region_flag == True):
+    if chromosome_flag and bed_region_flag:
         for region in interest_regions:
-            chromesome = region[0]
+            chromosome = region[0]
             start = int(region[1])
             stop = int(region[2])
 
-            tfit_dict[chromesome][(start, stop)] = []             
+            tfit_dict[chromosome][(start, stop)] = []
+    
+    elif chromosome_flag and not bed_region_flag:
+        for chromosome in chromosome_list(bed_regions=interest_regions):
+            tfit_dict[chromosome] = {}
+
+    else:
+        for chromosome in chromosome_list():
+            tfit_dict[chromosome] = {}
+
     return tfit_dict
 
 
@@ -478,21 +505,22 @@ def tfit_file_reader(filename, sampid, tfit_dict):
 
             # First non-header line
             line = line.split('\t')
-            chromesome = line[0]
+            chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
             coverage = 0
 
             try:
                 region_key = next(
-                    key for key in tfit_dict[chromesome].keys()
+                    key for key in tfit_dict[chromosome].keys()
                     if start >= int(key[0]) and stop <= int(key[1])
                     )
                 val = tuple([start, stop, coverage, sampid])
-                tfit_dict[chromesome][region_key].append(val)
+                tfit_dict[chromosome][region_key].append(val)
             except Exception:
                 print("No region found...")     # CHANGE THIS!!!
 
+            # After processing the first non-header line, we can now loop. 
             # Loop over all the lines in tfit file and compare the to regions 
             # in dict
             for line in f:
@@ -500,7 +528,7 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 # Read and split non-header lines. Lines should be of the form 
                 # "chr#  start  stop  [parameters]"
                 line = line.strip('\n').split('\t')
-                chromesome = line[0]
+                chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
                 coverage = 0
@@ -509,13 +537,15 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 # line lands
                 try:
                     region_key = next(
-                        key for key in tfit_dict[chromesome].keys()
+                        key for key in tfit_dict[chromosome].keys()
                         if start >= int(key[0]) and stop <= int(key[1])
                         )
                     val = tuple([start, stop, coverage, sampid])
-                    tfit_dict[chromesome][region_key].append(val)
+                    tfit_dict[chromosome][region_key].append(val)
                 except StopIteration:
                     continue
+    
+    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
     return tfit_dict
 
 
@@ -583,6 +613,7 @@ def mu_dict_generator(tfit_filenames,
     for (sampid, file) in id_and_files:
         tfit_dict = tfit_file_reader(file, sampid, tfit_dict)
     
+    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
     return dict(tfit_dict)
 
 
@@ -773,7 +804,7 @@ def maxima_loc(samp_list, shift=0):
 def mu_sig_extract(mu_list, width=1.0):
     '''
     This funciton just pulls the mu and sigma values out of the tfit_dict for
-    a given chromesome and bed region. Returns tuples in list of form
+    a given chromosome and bed region. Returns tuples in list of form
     [(mu_1, sig_1), (mu_2, sig_2), ...].
     '''
     starts, stops, cov, samples = zip(*mu_list)
@@ -833,22 +864,24 @@ def sigma_assigner(new_mu, old_mu_sig):
 
 
 ###############################################################################
-## This function resolves collisions between newly calculated bed intervals 
-# (i.e. the new mu-sig). If two overlap, then the intervals are shrunk to 
-# where the intervals touch.
-def collision_resolver(mu_sig_list, chromosome, log=None):
+def collision_resolver(mu_sig_list, chromosome, width=1.0, log=None):
     '''
-    Takes input list of (mu, sig, ...) tuples and evaluates if any of them are 
-    overlapping. In the event they do, they are shrunk to the point that they 
-    just touch. This is done in a L-to-R parse (so a doubly-overlapping region 
-    may not end up directly adjacent to its lefthand neighbor). Scaling is 
-    performed based on the relative lenghs of the two neighboring bed regions. 
-    This function also checks if any bed regions have negative coordinates and 
-    then adjusts their size so they start at bp = 0.
+    Takes input list of [(mu, sig, ...), ... ] tuples and evaluates if any of 
+    them are overlapping. In the event they do, they are shrunk to the point 
+    that they just touch. This is done in a L-to-R parse (so a 
+    doubly-overlapping region may not end up directly adjacent to its lefthand 
+    neighbor). Scaling is performed based on the relative lenghs of the two 
+    neighboring bed regions. This function also checks if any bed regions have 
+    negative coordinates and then adjusts their size so they start at bp = 0.
     '''
-    # Make sure mu_sig_list is sorted by mu position: [(mu, sig, ...), ...]
+    # Make sure mu_sig_list is sorted by mu position: [(mu, sig, ...), ... ]
     mus = sorted(mu_sig_list, key=lambda x: x[0])
 
+    # no collisions possible if there is only one mu in the list
+    if len(mus) <= 1:
+        return mus
+
+    # sliding window through list of sorted mus
     for i, mu in enumerate(mus[:-1]):
 
         pos1 = mus[i][0]
@@ -856,19 +889,23 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
         pos2 = mus[i+1][0]
         sig2 = mus[i+1][1]
 
-        # Determine if mu_i and mu_i+1 overlap with one another
-        if overlap_check((pos1-sig1, pos1+sig1), (pos2-sig2, pos2+sig2)):
+        # Determine if mu_i and mu_i+1 overlap with one another (accounting 
+        # for sigma:bed-length ratio)
+        region1 = (round(pos1 - sig1/width), round(pos1 + sig1/width))
+        region2 = (round(pos2 - sig2/width), round(pos2 + sig2/width))
+        if overlap_check(region1, region2):
             
             if log:
-                log.write(f"{chromosome}\t{mu[i]}/{mu[i+1]}\tcollision\n")
+                log.write(f"{chromosome}\t{region1}/{region2}\tcollision\n")
 
             # Calculate distance and ratio of length between adjacent mu
             len_ratio = sig1 / (sig1 + sig2)
             dist = pos2 - pos1
             
-            # Calculate new sigmas, and write them to mu list
-            delta1 = round(dist * len_ratio)
-            delta2 = round(dist * (1 - len_ratio))
+            # Calculate new sigmas, and write them to mu list (account for 
+            # sigma: bed-length ratio)
+            delta1 = dist * len_ratio * width
+            delta2 = dist * (1 - len_ratio) * width
             mus[i] = (pos1, delta1) + tuple(mus[i][2:])
             mus[i+1] = (pos2, delta2) + tuple(mus[i+1][2:])
 
@@ -876,14 +913,14 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
             pass
         
         # Determine if mu_i has negative coordinates (region near start of chr)
-        left_edge = mus[i][0] - mus[i][1]
+        left_edge = region1[0]
 
         if left_edge < 0:
 
             if log:
-                log.write(f"{chromosome}\t{mu[i]}\tnegative\n")
+                log.write(f"{chromosome}\t{region1}\tnegative\n")
 
-            new_sig = mus[i][1] + left_edge
+            new_sig = (mus[i][1] + left_edge) * width
             # reassign mu_i
             mus[i] = (mus[i][0], new_sig, *mus[i][2:])
             
@@ -897,18 +934,28 @@ def collision_resolver(mu_sig_list, chromosome, log=None):
 ## This function defines the boundaries of the bed region, using the updated
 # sigmas (from sigma_assigner()) and outputs a list of strings formatted as 
 # bedfile regions.
-def bed_line_formatter(chromosome, mu_sig_list, width=1.0):
+def bed_line_formatter(chromosome, mu_sig_list, width=1.0, sampids=None):
     '''
-    Takes input list of new (mu, sigma) tuples and outputs list of strings 
-    formatted as bedfile lines.
+    Takes input list of new (mu, sigma, ...) tuples and outputs list of 
+    strings formatted as bedfile lines. The sampids kwarg is used to print a 
+    list of sample IDs to the fourth column of the output bed file.
     '''
     bed_lines = []
-    for mu in mu_sig_list:
-        start = str(round(mu[0] - mu[1] / width))
-        stop = str(round(mu[0] + mu[1] / width))
-        bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
-#        avg = str(round((int(start) + int(stop)) / 2))
-#        bed_lines.append("\t".join([chromosome, start, stop, avg]) + "\n")
+
+    if sampids != None:
+        sampids = ",".join(sampids)
+
+        for mu in mu_sig_list:
+            start = str(round(mu[0] - mu[1]/width))
+            stop = str(round(mu[0] + mu[1]/width))
+            bed_lines.append("\t".join([chromosome, start, stop, sampids]) 
+                + "\n")
+
+    else:
+        for mu in mu_sig_list:
+            start = str(round(mu[0] - mu[1]/width))
+            stop = str(round(mu[0] + mu[1]/width))
+            bed_lines.append("\t".join([chromosome, start, stop]) + "\n")
 
     return bed_lines
 
@@ -944,6 +991,7 @@ def main():
     weights = inputs['weights']
     width_ratio = inputs['width_ratio']
     remove_singletons = inputs['remove_singletons']
+    save_sampids = inputs['save_sampids']
 
     num_samps = len(tfit_filenames)
 
@@ -1023,7 +1071,7 @@ def main():
 
                 # Select Tfit calls for one region
                 mu_list = tfit_dict[chromosome][region]
-    #            print(chromosome, region, (region[0]+region[1])/2, mu_list)
+
                 if call_remover(mu_list,remove_singletons):
                     # Write the singletons to a new output file
                     singletonfile.write("\n")
@@ -1074,14 +1122,23 @@ def main():
                 final_mu_sig = collision_resolver(
                     new_mu_sig, 
                     chromosome,
+                    width=width_ratio,
                     log=miscallfile
                 )     #CHECK!!!
+
+                # Generate list of sample IDs for contributing samples
+                if save_sampids:
+                    sampid_set = set([str(i[3]) for i in mu_list])
+                    out_sampids = sorted(list(sampid_set))
+                else:
+                    out_sampids = None
 
                 # Convert final (mu, sig) to bed line format, write to output
                 bedlines = bed_line_formatter(
                     chromosome, 
                     final_mu_sig, 
-                    width=width_ratio
+                    width=width_ratio,
+                    sampids=out_sampids
                 )
                 
                 # Write updated bedlines to output file
