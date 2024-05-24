@@ -3,7 +3,7 @@
 usage: mumerge [-h | -H] [-i INPUT] [-o OUTPUT] [-w WIDTH] [-m MERGE] [-r] [-v]
 """
 
-__author__ = 'Jacob T. Stanley'
+__author__ = 'Jacob T. Stanley and Hope A. Townsend (slight edits 04/24/24)'
 __maintainer__ = 'Jacob T. Stanley'
 __email__ = 'jacob.stanley@colorado.edu'
 __license__ = 'GPL v3.0'
@@ -171,6 +171,7 @@ def inputs_processor():
         'verbose': False,
         'remove_singletons': False,
         'save_sampids': False,
+        'orig_names': False,
         'width_ratio': None
     }
 
@@ -237,6 +238,14 @@ def inputs_processor():
             "region. These are included in the fourth column of the output "
             "file as a comma separated list."
     )
+    # ORIG NAMES OUTPUT FLAG (OPTIONAL)
+    parser.add_argument(
+        '-n', '--orig_names',
+        action='store_true',
+        help="Include the IDs of the exact features that contribute to the "
+            "region. These are included in the fourth column of the output "
+            "file as a comma separated list in REPLACEMENT of save_sampids."
+    )
     # VERBOSE FLAG (OPTIONAL)
     parser.add_argument(
         '-v', '--verbose',
@@ -265,6 +274,10 @@ def inputs_processor():
     if args.save_sampids:
         outdict['save_sampids'] = True
 
+    if args.orig_names:
+        outdict['orig_names'] = True
+        outdict['save_sampids'] = True
+
     if not args.output:
         raise TypeError("Please specify output filename with '-o' flag. "
                         "Shound include fullpath + basename for outputs. "
@@ -290,7 +303,9 @@ def inputs_processor():
             # Append all samples to list of tuples (and checking length)
             samples = []
             for line in f:
+                print(line)
                 samp = tuple(line.strip().split("\t"))
+                print(samp)
                 assert len(samp) == 3, "Sample line must contain three fields."
                 samples.append(samp)
             
@@ -304,6 +319,8 @@ def inputs_processor():
                 input_file_path.joinpath(p) if not p.is_absolute() 
                 else p for p in bedfile_paths
             ]
+            for bedfile in bedfile_paths:
+                print(bedfile, bedfile.exists())
             file_check = all(bedfile.exists() for bedfile in bedfile_paths)
             assert file_check, "One or more of your input bedfiles don't exist"
             # Convert back to strings
@@ -328,13 +345,18 @@ def inputs_processor():
             else:
                 ## Generate merged bed file using bedtools binary
                 union_bedfile = args.output + "_BEDTOOLS_MERGE.bed"
-
+                
+                # If names then include the 4th column
+                if outdict['orig_names']:
+                    merge = '| bedtools merge -c 4 -o distinct -delim "|" -i stdin'
+                else:
+                    merge = "| bedtools merge -i stdin"
                 cat = "cat " + " ".join(bedfile_paths)
                 sort = "| bedtools sort -i stdin"
-                merge = "| bedtools merge -i stdin"
                 out = " ".join([">", union_bedfile])
                 
                 # Run bedtools sort + merge
+                print(" ".join([cat, sort, merge, out]))
                 system(" ".join([cat, sort, merge, out]))
 
     else:
@@ -403,15 +425,17 @@ def log_initializer(
 ###############################################################################
 # This function reads a bed file into a list of tuples, to be used as input
 # "interest_regions" in tfit_dict_initializer()
-def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
+def bedfile_reader(file, bedGraph=False, print_header=False, count=False, names=False):
     '''
     This reads in a bedfile and outputs the lines as a list of tuples of the
     form [('chr#', start, stop), ...]. Additional columns can be provided, but
-    will be ignored if bedGraph=False. If True, fourth column will be
-    interpreted as coverage.
+    will be ignored if bedGraph=False AND names=False. If names is True, the
+    fourth column will be interpreted as the name of the feature. If bedgraph 
+    is True, fourth column will be interpreted as coverage.
 
     TODO: Incorporate the bedGraph functionality, write docstring
     '''
+    print(file)
     with open(file) as f:
             # Initialize output list and counter
             bed_list = []
@@ -422,14 +446,17 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
             line = f.readline().strip('\n')
             while line[0] == '#':
                 if print_header == True:
-                    print(line)
-                line = f.readline().strip('\n')
+                    line = f.readline().strip('\n')
             line = line.split('\t')
 
             chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
-            bed_list.append((chromosome, start, stop))
+            if names:
+                name = line[3]
+                bed_list.append((chromosome, start, stop, name))
+            else:
+                bed_list.append((chromosome, start, stop))
 
             # Loop over all the lines in bed file and add to list
             for line in f:
@@ -440,10 +467,15 @@ def bedfile_reader(file, bedGraph=False, print_header=False, count=False):
                 chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
-                bed_list.append((chromosome, start, stop))
+                if names:
+                    name = line[3]
+                    bed_list.append((chromosome, start, stop, name))
+                else:
+                    bed_list.append((chromosome, start, stop))
                 counter = counter + 1
 
     # Return format: [('chr#', start, stop, [...]), ... ]
+    print("Number of regions: ", counter)
     if count == True:
         print("Number of regions: ", counter)
         return bed_list, counter
@@ -487,7 +519,7 @@ def tfit_dict_initializer(interest_regions,
 ###############################################################################
 # This function scans a single tfit file and populates the tfit call regions 
 # into the provided dict
-def tfit_file_reader(filename, sampid, tfit_dict):
+def tfit_file_reader(filename, sampid, tfit_dict, names=False):
     '''
     This function scans a tfit file and populates the tfit call regions into 
     the provided dict and returns that dict with the updated information. Must 
@@ -496,7 +528,7 @@ def tfit_file_reader(filename, sampid, tfit_dict):
     bottleneck. I should reevaluate the 'region_key = next()' approach
     '''
     with open(filename, 'r') as f:
-            
+            counter=1
             # Loop over the header lines and print them out
             line = f.readline().strip('\n')
             while line[0] == '#':
@@ -508,6 +540,8 @@ def tfit_file_reader(filename, sampid, tfit_dict):
             chromosome = line[0]
             start = int(line[1])
             stop = int(line[2])
+            if names:
+                name = line[3]
             coverage = 0
 
             try:
@@ -515,7 +549,10 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                     key for key in tfit_dict[chromosome].keys()
                     if start >= int(key[0]) and stop <= int(key[1])
                     )
-                val = tuple([start, stop, coverage, sampid])
+                if names:
+                    val = tuple([start, stop, coverage, sampid, "|".join([name, sampid])])
+                else:
+                    val = tuple([start, stop, coverage, sampid])
                 tfit_dict[chromosome][region_key].append(val)
             except Exception:
                 print("No region found...")     # CHANGE THIS!!!
@@ -531,6 +568,8 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                 chromosome = line[0]
                 start = int(line[1])
                 stop = int(line[2])
+                if names:
+                    name = line[3]
                 coverage = 0
         
                 # Find start_stop_key in which the start_stop region in the 
@@ -540,12 +579,17 @@ def tfit_file_reader(filename, sampid, tfit_dict):
                         key for key in tfit_dict[chromosome].keys()
                         if start >= int(key[0]) and stop <= int(key[1])
                         )
-                    val = tuple([start, stop, coverage, sampid])
+                    if names:
+                        val = tuple([start, stop, coverage, sampid, "|".join([name, sampid])])
+                    else:
+                        val = tuple([start, stop, coverage, sampid])
                     tfit_dict[chromosome][region_key].append(val)
+                    counter = counter + 1
                 except StopIteration:
                     continue
-    
-    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
+    print("Number of Regions:", counter)
+    #print(tfit_dict)
+    # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid OR Name], ... }, ... }
     return tfit_dict
 
 
@@ -562,7 +606,8 @@ def tfit_file_reader(filename, sampid, tfit_dict):
 def mu_dict_generator(tfit_filenames, 
                       interest_regions, 
                       sampids = ["sampid_NA"],
-                      verbose = False):
+                      verbose = False, 
+                     names=False):
     '''
     At its core this function calls tfit_dict_initializer() on the interest 
     regions (i.e. the results of bedtools merge) and then loops over a list of 
@@ -611,7 +656,7 @@ def mu_dict_generator(tfit_filenames,
     #Loop over all the filenames in the tfit_filenames list and scan through 
     # each one (tfit_file_reader() is user defined)
     for (sampid, file) in id_and_files:
-        tfit_dict = tfit_file_reader(file, sampid, tfit_dict)
+        tfit_dict = tfit_file_reader(file, sampid, tfit_dict, names=names)
     
     # {'chr#': {(reg_start, reg_stop): [start, stop, cov, sampid], ... }, ... }
     return dict(tfit_dict)
@@ -699,11 +744,15 @@ def prob_list_formatter(region, mu_list, dist="normal", width=1.0):
     # Unzip the input mu_list. mu_list should be list of tuples of format 
     # (start, stop, cov, 'sampID')
     try:
-        starts, stops, cov, samples = zip(*mu_list)
+        if len(mu_list[0]) == 4:
+            starts, stops, cov, samples = zip(*mu_list)
+        else:
+            starts, stops, cov, samples, names = zip(*mu_list)
         samp_list = sorted(set(samples))
     except TypeError:
         print(("'mu_list' is not of the right format -- list of tuples" 
-              "(start, stop, cov, 'sampID')"))
+              "(start, stop, cov, 'sampID')"
+              " or (start, stop, cov, 'sampID', 'name')"))
 
     # Intermediate dict, to grop together all the values for each sample
     region_dict = defaultdict(list)
@@ -807,7 +856,10 @@ def mu_sig_extract(mu_list, width=1.0):
     a given chromosome and bed region. Returns tuples in list of form
     [(mu_1, sig_1), (mu_2, sig_2), ...].
     '''
-    starts, stops, cov, samples = zip(*mu_list)
+    if len(mu_list[0]) == 4:
+        starts, stops, cov, samples = zip(*mu_list)
+    else:
+        starts, stops, cov, samples, names = zip(*mu_list)
     mu_sig_list = [(round((i[1] + i[0]) / 2), ((i[1] - i[0]) / 2) * width)     # THIS FACTOR SAME AS ONE IN prob_list_generator()!!!
                    for i in zip(starts, stops)]
 
@@ -981,6 +1033,8 @@ def main():
 
     ## Arg parse, define vars (bedfiles, sampids, groups), generate merged bed
     inputs = inputs_processor()  
+    if inputs['verbose']:
+        print("\nINPUTS", inputs, "\n")
     input_file = inputs['input']                                              # TEST!!!
     tfit_filenames = inputs['bedfiles']
     sampids = inputs['sampids']
@@ -992,8 +1046,11 @@ def main():
     width_ratio = inputs['width_ratio']
     remove_singletons = inputs['remove_singletons']
     save_sampids = inputs['save_sampids']
+    orig_names = inputs['orig_names']
 
     num_samps = len(tfit_filenames)
+    if verbose:
+        print("Number of samples ", num_samps)
 
     ## Define output files and open 'log' file 'miscall' files
     outbed_filename = output_basename + "_MUMERGE.bed"
@@ -1008,6 +1065,8 @@ def main():
         singletonfile = open(singletonfilename, 'w')
 
     ## Writes the initial, summary data in the miscalls and log files
+    if verbose:
+        sys.stdout.write("\Initializaing log file...\n")
     log_initializer(
         input_file,        
         tfit_filenames, 
@@ -1027,7 +1086,8 @@ def main():
     merge_regions = bedfile_reader(union_bedfile,
                                 bedGraph=False,
                                 print_header=False,
-                                count=False)
+                                count=False, 
+                                  names=orig_names)
     if verbose:
         sys.stdout.write("Building bed-regions dictionary...\n")
     ## Generate tfit dictionary, of form 
@@ -1035,6 +1095,7 @@ def main():
     tfit_dict = mu_dict_generator(list(tfit_filenames),
                                 merge_regions,
                                 sampids = list(sampids),
+                                  names=orig_names,
                                 verbose = verbose)
 
     # Count up the total number of regions (to be logged and printed out)
@@ -1046,7 +1107,7 @@ def main():
     # Check to make sure no regions are empty, then generate distribution of 
     # tfit calls. Write to log file.
     call_num = []
-    for chrome, region in tfit_dict.items():
+    for chrom, region in tfit_dict.items():
         for interval, calls in region.items():
             call_num.append(len(calls))
     call_hist = Counter(call_num)
@@ -1073,6 +1134,7 @@ def main():
                 mu_list = tfit_dict[chromosome][region]
 
                 if call_remover(mu_list,remove_singletons):
+                    print("Removing singletons")
                     # Write the singletons to a new output file
                     singletonfile.write("\n")
                     singletonfile.write("\t".join([str(chromosome), 
@@ -1084,22 +1146,25 @@ def main():
                     continue
                 # Calculate average number of tfit calls per sample (rounds up)
                 avg_num_mu = ceil(len(mu_list) / num_samps) + 1           # I'M JUST TESTING HOW THIS IMPACTS THE DELTA MU TEST (THE +1)
-
+                #print("mu_list", mu_list)
+                #print("width ratio", width_ratio)
                 # Generate prob dict (func of bp pos) for region of tfit calls
                 sample_prob_dict = prob_list_formatter(region, 
                                                         mu_list, 
                                                         dist="normal",
                                                         width=width_ratio)     #CHECK!!!
-
+                #print("SAMPLE", sample_prob_dict)
+                print("GROUPINGS", groupings)
                 # Calculate combined prob array (function of base position),
                 # from 'groups' and the probability lists in sample_prob_dict() 
                 comb_prob = combined_prob_calculator(sample_prob_dict, 
                                                         groups=groupings)      #FIX!!!
-
+                #print("COMB", comb_prob)
                 # Locate local maxima (shifted to range of 'region')
                 potential_mu = maxima_loc(comb_prob, shift=region[0])          #CHECK!!!
 
                 # Determine which updated mu locations to keep
+                #print("POTENTIAL", potential_mu, avg_num_mu)
                 new_mu = mu_ranker(potential_mu, avg_num_mu)
 
                 # If new_mu is empty, log in 'miscalls' and skip to next region
@@ -1125,15 +1190,19 @@ def main():
                     width=width_ratio,
                     log=miscallfile
                 )     #CHECK!!!
-
-                # Generate list of sample IDs for contributing samples
-                if save_sampids:
+                # Generate the list of original names AND/or sampids for contributing samples
+                if orig_names:
+                    sampid_set = set([str(i[4]) for i in mu_list])
+                    out_sampids = sorted(list(sampid_set))
+                elif save_sampids:
                     sampid_set = set([str(i[3]) for i in mu_list])
                     out_sampids = sorted(list(sampid_set))
                 else:
                     out_sampids = None
+                
 
                 # Convert final (mu, sig) to bed line format, write to output
+                print("FINAL", final_mu_sig)
                 bedlines = bed_line_formatter(
                     chromosome, 
                     final_mu_sig, 
