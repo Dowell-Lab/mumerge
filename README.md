@@ -52,7 +52,10 @@ optional arguments:
                         Sorted bedfile (full path) containing the regions over which to combine the sample bedfiles. If not specified, mumerge will generate one directly from the sample bedfiles.
   -r, --remove_singletons
                         Remove calls not present in more than 1 sample
-  -v, --verbose         Verbose printing during processing.
+  -s, --samp_ids        Include the sample ids from which each mumerged consensus feature came.
+  -n, --orig_names.     Include the names of the original entities supporting the mumerged consensus feature AND the sample ids in the format of 
+                         name|sampid, name|sampid. WARNING: This requires a fourth column in the input bed files of the name
+-v, --verbose         Verbose printing during processing.
 
 ```
 
